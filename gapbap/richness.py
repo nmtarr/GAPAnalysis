@@ -73,8 +73,8 @@ def CalculateRichness(spp, groupName, outLoc, modelDir, season, interval_size, l
     __Log('Table written to {0}'.format(outTable))
     __Log('Here are the species that will be used:')
     __Log(str(spp) + '\n')
-    __Log("\n\n#"*67)
-    __Log("The results from the process are printed below")
+    __Log("\n\n" + ("#"*67))
+    __Log("The results from richness processing are printed below")
     __Log("#"*67)
     
     # Maximum number of species to process at once
