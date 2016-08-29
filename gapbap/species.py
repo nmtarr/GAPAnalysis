@@ -28,7 +28,7 @@ for each tile before processing.
 Some notes from each run are recorded in a processing log at the end of the run.
 The log stores the list of models with tiling problems or negative values in the
 species distribution grid.
-'''
+
 import arcpy, pandas as pd, os, shutil
 arcpy.CheckOutExtension("Spatial")
 from datetime import datetime
@@ -290,4 +290,4 @@ dfNewMod = df1.reindex(newMod)
 dfNewMas = pd.concat([dfMas, dfNewMod])
 dfNewMas.to_csv(ProjDir + "\\Percent_in_" + Keyword + "_Master.csv", index_col="tif")
 
-
+'''
