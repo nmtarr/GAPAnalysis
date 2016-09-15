@@ -1,4 +1,4 @@
-def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, log):    
+def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log, expand=False):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -26,6 +26,11 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
     interval_size -- How many rasters to include in an intermediate batch.  20 is a good number.
     log -- Path and name of log file to save print statements, errors, and code to.  Recommended
         location is "os.path.join(outLoc, 'log_' + groupName + '.txt')"
+    expand -- Default to False.  If you set to true, then each reclassed raster will be added to
+        a raster of CONUS extent with the top, left 9 pixels having a value of 1, and all others 
+        with a value of zero.  Doing this provides a check that each model was added during the 
+        processing, but it slows things down A LOT.  The CONUS extent grid lives in the GAPage
+        data directory.
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
@@ -69,15 +74,15 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
     
     ###################################################### Write header to log file
     ###############################################################################
+    __Log("\n" + ("#"*67))
+    __Log("The results from richness processing")
+    __Log("#"*67)    
     __Log(starttime.strftime("%c"))
     __Log('\nProcessing {0} species as "{1}".\n'.format(len(spp), groupName).upper())
     __Log('Season of this calculation: ' + season)
     __Log('Table written to {0}'.format(outTable))
     __Log('The species that will be used for analysis:')
     __Log(str(spp) + '\n')
-    __Log("\n" + ("#"*67))
-    __Log("The results from richness processing are printed below")
-    __Log("#"*67)
     
     # Maximum number of species to process at once
     interval = interval_size
@@ -93,7 +98,7 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
         # Assigned the species subset a name
         gn = '{0}_{1}'.format(groupName, x)
         # Process the richness for the subset of species
-        __Log('Processing {0}: {1}'.format(groupName, spp))  
+        __Log('Processing {0}: {1}'.format(groupName, sppSubset))  
               
         #########################################  Copy models to scratch directory
         ###########################################################################
@@ -141,6 +146,7 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
             wc = "VALUE > 0"
         # For each of the local species rasters
         for sp in sppLocal:
+            ############################################################ Reclassify              
             try:
                 __Log('\t\t{0}'.format(os.path.basename(sp)))
                 # Set a path to the output reclassified raster
@@ -154,21 +160,36 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
                 tempRast = arcpy.sa.Con(sp, 1, where_clause = wc)
                 # Check that the reclassed raster has valid values (should be 1's and nodatas)
                 if tempRast.minimum != 1:
-                    __Log('\tWARNING! Invalid minimum raster value -- {0}'.format(sp))
+                    __Log('\tWARNING! Invalid minimum cell value -- {0}'.format(sp))
+                elif tempRast.minimum == 1:
+                    __Log('\tValid minimum cell value')
                 if tempRast.maximum != 1:
-                    __Log('\tWARNING! Invalid maximum raster value -- {0}'.format(sp))
+                    __Log('\tWARNING! Invalid maximum cell value -- {0}'.format(sp))
+                elif tempRast.maximum == 1:
+                    __Log('\tValid maximum cell value')
                 if tempRast.mean != 1:
-                    __Log('\tWARNING! Invalid mean raster value -- {0}'.format(sp))
-                ########  ADD TO STEVES RASTER HERE?
-                # Save the reclassified raster
-                tempRast.save(reclassed)
-                # Add the reclassed raster's path to the list
-                sppReclassed.append(reclassed)
-                # Make sure that the reclassified model exists, pause if not.
-                if not arcpy.Exists(reclassed):
-                    __Log('\tWARNING! This reclassed raster could not be found -- {0}'.format(sp))
+                    __Log('\tWARNING! Invalid mean cell value -- {0}'.format(sp))
+                elif tempRast.mean == 1:
+                    __Log('\tValid mean cell value')
             except Exception as e:
-                __Log('ERROR in reclassifying a model - {0}'.format(e))
+                __Log('ERROR in reclassifying a model - {0}'.format(e))                
+            
+            ###################################### Optional: expand to CONUS extent    
+            try:
+                if expand == True:
+                    tempRast = arcpy.sa.CellStatistics([tempRast, gapageconfig.CONUS_extent], 
+                                                        "SUM", "DATA")
+            except Exception as e:
+                __Log('ERROR expanding reclassed raster - {0}'.format(e))
+                # Save the reclassified raster
+            
+            tempRast.save(reclassed)
+            # Add the reclassed raster's path to the list
+            sppReclassed.append(reclassed)
+            # Make sure that the reclassified model exists, pause if not.
+            if not arcpy.Exists(reclassed):
+                __Log('\tWARNING! This reclassed raster could not be found -- {0}'.format(sp))
+            
         __Log('\tAll models reclassified')
     
         ########################################  Calculate richness for the subset
@@ -183,6 +204,19 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
             richInts.append(outRast)
         except Exception as e:
             __Log('ERROR in making intermediate richness - {0}'.format(e))
+        
+        ############# If the expand option used, check max count to see if it right
+        ###########################################################################
+        if expand == True:
+            try:
+                __Log('Checking intermediate raster count')        
+                if richness.maximum != len(sppSubset):
+                    __Log('A raster was skipped in intermediate richness calculation...quiting')
+                    quit
+                elif richness.maximum == len(sppSubset):
+                    __Log('Intermediate richness used the right number of rasters')
+            except Exception as e:
+                __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
           
         ################  Delete each of the copied and reclassified species models
         ###########################################################################
@@ -207,6 +241,19 @@ def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, 
     except Exception as e:
         __Log('ERROR in final richness calculation - {0}'.format(e))
     
+    ############# If the expand option used, check max count to see if it right
+    ###########################################################################
+    if expand == True:
+        try:
+            __Log('Checking final richness raster count')        
+            if richness.maximum != len(spp):
+                __Log('A raster(s) was skipped somewhere...quiting')
+                quit
+            elif richness.maximum == len(spp):
+                __Log('Final richness has the right number of rasters')
+        except Exception as e:
+            __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
+      
     shutil.rmtree(scratch)
     shutil.rmtree(reclassDir)
     
