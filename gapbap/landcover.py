@@ -19,44 +19,50 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
         and 'lcgap_um'.
     log -- Path and name of log file to save print statements, errors, and code to.
     '''
-    ################################################ Things to import and check out
-    ###############################################################################    
-    import arcpy, datetime
+    #################################################### Things to import and check out
+    ###################################################################################    
+    import arcpy, datetime, os
     arcpy.CheckOutExtension("Spatial")
     
-    ###################################################### Some environment settings
-    ################################################################################  
+    ########################################################## Some environment settings
+    ####################################################################################  
     LCLoc = lcDir + "/"
     arcpy.env.overwriteOutput = True
     starttime = datetime.datetime.now()   
         
-    ##### Get list of regional land covers to reclassify, reset workspace to workdir
-    ################################################################################
+    ######### Get list of regional land covers to reclassify, reset workspace to workdir
+    ####################################################################################
     arcpy.env.workspace = LCLoc
     regions = arcpy.ListRasters()
     regions  = [r for r in regions if r in ['lcgap_gp', 'lcgap_ne', 'lcgap_nw', 
                                             'lcgap_se', 'lcgap_sw', 'lcgap_um']]
     arcpy.env.workspace = workDir
     
-    ######################################### Function to write data to the log file
-    ################################################################################
+    ################################################# Create directories for the output
+    ###################################################################################
+    outDir = os.path.join(workDir, keyword)
+    if not os.path.exists(outDir):
+        os.makedirs(outDir)
+            
+    ############################################# Function to write data to the log file
+    ####################################################################################
     def __Log(content):
         print content
         with open(log, 'a') as logDoc:
             logDoc.write(content + '\n')    
     
-    ####################################################### Write header to log file
-    ################################################################################
-    __Log("\n" + ("#"*67))
+    ########################################################### Write header to log file
+    ####################################################################################
+    __Log("#"*67)
     __Log("The statements from processing")
     __Log("#"*67)    
     __Log(starttime.strftime("%c"))
     __Log('\nProcessing {0} systems as "{1}".\n'.format(len(MUlist), keyword).upper())
-    __Log('The ecological systems that will be used for this reclassification are:')
+    __Log('The ecological systems used for this reclassification were:')
     __Log(str(MUlist) + '\n')
         
-    ############################################################ Make a remap object
-    ################################################################################
+    ################################################################ Make a remap object
+    ####################################################################################
     def MakeRemapList(mapUnitCodes, reclassValue):
         remap = []
         for x in mapUnitCodes:
@@ -70,8 +76,8 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
     except Exception as e:
         __Log("ERROR making Remap List - {0}".format(e))
         
-    ############################################################ Reclass the regions
-    ################################################################################
+    ################################################################ Reclass the regions
+    ####################################################################################
     MosList = []
     for lc in regions:
         grid = arcpy.sa.Raster(LCLoc + lc)
@@ -86,20 +92,26 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
         except Exception as e:
             __Log("ERROR saving regional land cover - {0}".format(e))
             
-    ########################################## Mosaic regional reclassed land covers
-    ################################################################################
+    ############################################## Mosaic regional reclassed land covers
+    ####################################################################################
     arcpy.management.MosaicToNewRaster(MosList, workDir, keyword,"", "", 
                                        "", "1", "MAXIMUM", "")
                                        
-    ################################################## Build pyramids and statistics
-    ################################################################################                                   
+    ###################################################### Build pyramids and statistics
+    ####################################################################################                                   
     try:
         arcpy.management.BuildPyramidsandStatistics(workDir + "\\" + keyword)
     except Exception as e:
         __Log("ERROR building pyramids and statistics - {0}".format(e))
-    
-    ################################# Return raster object of reclassed national map
-    ################################################################################  
+        
+    ########################################################### Write closer to log file
+    ####################################################################################
+    endtime = datetime.datetime.now()
+    runtime = endtime - starttime  
+    __Log('\nProcessing time was {0}'.format(runtime))
+        
+    ##################################### Return raster object of reclassed national map
+    ####################################################################################  
     reclassed = arcpy.Raster(workDir + "\\" + keyword)
     return reclassed
                                 

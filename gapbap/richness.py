@@ -1,4 +1,5 @@
-def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log, expand=False):    
+def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log, CONUS_extent, 
+                    expand=False):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -31,6 +32,9 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         with a value of zero.  Doing this provides a check that each model was added during the 
         processing, but it slows things down A LOT.  The CONUS extent grid lives in the GAPage
         data directory.
+    CONUS_extent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
+        for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
+        should be NAD_1983_Albers and cell size 30x30 m.
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
@@ -177,7 +181,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
             ###################################### Optional: expand to CONUS extent    
             try:
                 if expand == True:
-                    tempRast = arcpy.sa.CellStatistics([tempRast, gapageconfig.CONUS_extent], 
+                    tempRast = arcpy.sa.CellStatistics([tempRast, CONUS_extent], 
                                                         "SUM", "DATA")
             except Exception as e:
                 __Log('ERROR expanding reclassed raster - {0}'.format(e))

@@ -1,0 +1,2 @@
+201608161231   8    -7     0sgwillia TMP_EXTENT2 = con(isnull(tmp_sq2),0,tmp_sq2)
+201608161247   0     0     0sgwillia RENAME tmp_extent2 conus_ext_cnt
