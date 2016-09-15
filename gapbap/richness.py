@@ -1,4 +1,4 @@
-def CalculateRichness(spp, groupName, outLoc, modelDir, season, interval_size, log):    
+def ProcessRichnessNew(spp, groupName, outLoc, modelDir, season, interval_size, log):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -28,8 +28,10 @@ def CalculateRichness(spp, groupName, outLoc, modelDir, season, interval_size, l
         location is "os.path.join(outLoc, 'log_' + groupName + '.txt')"
 
     Example:
-    >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', \
-            r'C:\GIS_Data\Richness')
+    >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
+                        outLoc='C:/GIS_Data/Richness', modelDir='C:/Data/Model/Output',
+                        season="Summer", interval_size=20, 
+                        log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
     C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, C:\GIS_Data\Richness\MyRandomSpecies.csv
     '''    
     
@@ -69,11 +71,11 @@ def CalculateRichness(spp, groupName, outLoc, modelDir, season, interval_size, l
     ###############################################################################
     __Log(starttime.strftime("%c"))
     __Log('\nProcessing {0} species as "{1}".\n'.format(len(spp), groupName).upper())
-    __Log('Results are for the ' + season + ' season')
+    __Log('Season of this calculation: ' + season)
     __Log('Table written to {0}'.format(outTable))
-    __Log('Here are the species that will be used:')
+    __Log('The species that will be used for analysis:')
     __Log(str(spp) + '\n')
-    __Log("\n\n" + ("#"*67))
+    __Log("\n" + ("#"*67))
     __Log("The results from richness processing are printed below")
     __Log("#"*67)
     
@@ -150,15 +152,21 @@ def CalculateRichness(spp, groupName, outLoc, modelDir, season, interval_size, l
                 # Create a temporary raster from the species' raster, setting all
                 # values meeting the condition to 1
                 tempRast = arcpy.sa.Con(sp, 1, where_clause = wc)
+                # Check that the reclassed raster has valid values (should be 1's and nodatas)
+                if tempRast.minimum != 1:
+                    __Log('\tWARNING! Invalid minimum raster value -- {0}'.format(sp))
+                if tempRast.maximum != 1:
+                    __Log('\tWARNING! Invalid maximum raster value -- {0}'.format(sp))
+                if tempRast.mean != 1:
+                    __Log('\tWARNING! Invalid mean raster value -- {0}'.format(sp))
                 ########  ADD TO STEVES RASTER HERE?
                 # Save the reclassified raster
                 tempRast.save(reclassed)
                 # Add the reclassed raster's path to the list
                 sppReclassed.append(reclassed)
                 # Make sure that the reclassified model exists, pause if not.
-                if not arcpy.Exists(sp):
-                    __Log('\tWARNING! The species\' raster could not be found -- {0}'.format(sp))
-                    raw_input("Fix, then press enter to resume")
+                if not arcpy.Exists(reclassed):
+                    __Log('\tWARNING! This reclassed raster could not be found -- {0}'.format(sp))
             except Exception as e:
                 __Log('ERROR in reclassifying a model - {0}'.format(e))
         __Log('\tAll models reclassified')

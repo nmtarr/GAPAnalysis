@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 03 13:24:43 2016
-
-@author: nmtarr
-"""
-
 def MakeRemapList(mapUnitCodes, reclassValue):
     '''
     (list, integer) -> list of lists
