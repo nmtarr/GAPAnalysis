@@ -1,5 +1,5 @@
 def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log, CONUS_extent, 
-                    expand=False):    
+                    snap_raster, expand=False):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -35,6 +35,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     CONUS_extent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.
+    snap_raster -- A 30x30m cell raster to use as a snap grid during processing.
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
@@ -49,14 +50,15 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     arcpy.env.overwriteOutput=True
     arcpy.env.extent = 'MAXOF'
     arcpy.env.pyramid = 'NONE'
+    arcpy.env.snapRaster = snap_raster
+    starttime = datetime.datetime.now()      
     
     ############################################# create directories for the output
     ###############################################################################
-    starttime = datetime.datetime.now()       
-    scratch = os.path.join(outLoc, groupName + '_01_scratch')
-    reclassDir = os.path.join(outLoc, groupName + '_02_reclassed')
-    intDir = os.path.join(outLoc, groupName + '_03_Richness_intermediate')
-    outDir = os.path.join(outLoc, groupName + '_04_Richness')
+    outDir = os.path.join(outLoc, groupName + '_Richness')    
+    scratch = os.path.join(outDir,'_scratch')
+    reclassDir = os.path.join(outDir, '_reclassed')
+    intDir = os.path.join(outDir, 'Richness_intermediates')
     for x in [scratch, reclassDir, intDir, outDir]:
         if not os.path.exists(x):
             os.makedirs(x)
@@ -85,7 +87,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     __Log('\nProcessing {0} species as "{1}".\n'.format(len(spp), groupName).upper())
     __Log('Season of this calculation: ' + season)
     __Log('Table written to {0}'.format(outTable))
-    __Log('The species that will be used for analysis:')
+    __Log('\nThe species that will be used for analysis:')
     __Log(str(spp) + '\n')
     
     # Maximum number of species to process at once
@@ -102,7 +104,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         # Assigned the species subset a name
         gn = '{0}_{1}'.format(groupName, x)
         # Process the richness for the subset of species
-        __Log('Processing {0}: {1}'.format(groupName, sppSubset))  
+        __Log('\nProcessing {0}: {1}'.format(gn, sppSubset))  
               
         #########################################  Copy models to scratch directory
         ###########################################################################
@@ -204,12 +206,15 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
             outRast = os.path.join(intDir, gn + '.tif')
             richness.save(outRast)
             __Log('\tSaved to {0}'.format(outRast))
+            # Check the max value.  It shouldn't be > the group length.
+            if richness.maximum > len(sppSubset):
+                __Log('\tWARNING! Invalid maximum cell value in {0}'.format(gn))
             # Add the subset's richness raster to the list of intermediate rasters
             richInts.append(outRast)
         except Exception as e:
             __Log('ERROR in making intermediate richness - {0}'.format(e))
         
-        ############# If the expand option used, check max count to see if it right
+        ########### If the expand option used, check max count to see if it's right
         ###########################################################################
         if expand == True:
             try:

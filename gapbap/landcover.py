@@ -2,9 +2,9 @@
 A collecton of funcions for common tasks related to land cover data.
 '''
           
-def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
+def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log):
     '''
-    (list) -> raster object, saved map.
+    (list, string, string, string, string, string, string) -> raster object, saved map.
     
     Builds a national map of select systems from the GAP Landcover used in species
         modeling. Takes several hours to run.
@@ -17,6 +17,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
     lcDir -- Where to find the regional landcover rasters.  The landcover rasters must 
         be named 'lcgap_gp', 'lcgap_ne', 'lcgap_nw', 'lcgap_se', 'lcgap_sw',
         and 'lcgap_um'.
+    lcVersion -- The version of GAP Land Cover to be reclassified.
     log -- Path and name of log file to save print statements, errors, and code to.
     '''
     #################################################### Things to import and check out
@@ -40,9 +41,8 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
     
     ################################################# Create directories for the output
     ###################################################################################
-    outDir = os.path.join(workDir, keyword)
-    if not os.path.exists(outDir):
-        os.makedirs(outDir)
+    if not os.path.exists(workDir):
+        os.makedirs(workDir)
             
     ############################################# Function to write data to the log file
     ####################################################################################
@@ -57,6 +57,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
     __Log("The statements from processing")
     __Log("#"*67)    
     __Log(starttime.strftime("%c"))
+    __Log('\nThis reclassification is based on GAP Land Cover version {0}.\n'.format(lcVersion))
     __Log('\nProcessing {0} systems as "{1}".\n'.format(len(MUlist), keyword).upper())
     __Log('The ecological systems used for this reclassification were:')
     __Log(str(MUlist) + '\n')
@@ -87,22 +88,27 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
             __Log("ERROR reclassifying regional land cover - {0}".format(e))
             
         MosList.append(RegReclass)
+        '''
         try:
             RegReclass.save(workDir + "rc" + lc)
         except Exception as e:
             __Log("ERROR saving regional land cover - {0}".format(e))
+        '''
             
     ############################################## Mosaic regional reclassed land covers
     ####################################################################################
-    arcpy.management.MosaicToNewRaster(MosList, workDir, keyword,"", "", 
-                                       "", "1", "MAXIMUM", "")
-                                       
-    ###################################################### Build pyramids and statistics
-    ####################################################################################                                   
     try:
-        arcpy.management.BuildPyramidsandStatistics(workDir + "\\" + keyword)
+        arcpy.management.MosaicToNewRaster(MosList, workDir, keyword + ".tif","", "", "", "1", "MAXIMUM", "")
     except Exception as e:
-        __Log("ERROR building pyramids and statistics - {0}".format(e))
+        __Log("ERROR mosaicing regions - {0}".format(e))
+                                       
+    ############################################### Build a RAT, pyramid, and statistics
+    ####################################################################################                                   
+    try:        
+        arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir)
+        arcpy.management.BuildRasterAttributeTable(arcpy.Raster(workDir + keyword + ".tif"))
+    except Exception as e:
+        __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))
         
     ########################################################### Write closer to log file
     ####################################################################################
@@ -112,6 +118,6 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, log):
         
     ##################################### Return raster object of reclassed national map
     ####################################################################################  
-    reclassed = arcpy.Raster(workDir + "\\" + keyword)
+    reclassed = arcpy.Raster(workDir + keyword + ".tif")
     return reclassed
                                 
