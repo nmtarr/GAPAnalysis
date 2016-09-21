@@ -98,15 +98,19 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ############################################## Mosaic regional reclassed land covers
     ####################################################################################
     try:
-        arcpy.management.MosaicToNewRaster(MosList, workDir, keyword + ".tif","", "", "", "1", "MAXIMUM", "")
+        arcpy.management.MosaicToNewRaster(MosList, workDir, keyword + ".tif","", "", "", "1", 
+                                           "MAXIMUM", "")
     except Exception as e:
         __Log("ERROR mosaicing regions - {0}".format(e))
                                        
-    ############################################### Build a RAT, pyramid, and statistics
+    ############################## Build a RAT, pyramid, and statistics; set nodata to 0
     ####################################################################################                                   
     try:        
         arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir)
-        arcpy.management.BuildRasterAttributeTable(arcpy.Raster(workDir + keyword + ".tif"))
+        mosaic = arcpy.Raster(workDir + keyword + ".tif")
+        arcpy.management.BuildRasterAttributeTable(mosaic)
+        arcpy.management.SetRasterProperties(in_raster=mosaic, nodata="1 0")
+        mosaic.save(workDir + keyword + ".tif")
     except Exception as e:
         __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))
         

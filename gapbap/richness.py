@@ -50,8 +50,15 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     arcpy.env.overwriteOutput=True
     arcpy.env.extent = 'MAXOF'
     arcpy.env.pyramid = 'NONE'
-    arcpy.env.snapRaster = snap_raster
+    arcpy.env.snapRaster = gapageconfig.snap_raster
     starttime = datetime.datetime.now()      
+    
+    # Maximum number of species to process at once
+    interval = interval_size
+    # Initialize an empty list to store the intermediate richness rasters
+    richInts = []
+    # Count the number of species in the species list
+    sppLength = len(spp)
     
     ############################################# create directories for the output
     ###############################################################################
@@ -84,23 +91,20 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     __Log("The results from richness processing")
     __Log("#"*67)    
     __Log(starttime.strftime("%c"))
-    __Log('\nProcessing {0} species as "{1}".\n'.format(len(spp), groupName).upper())
+    __Log('\nProcessing {0} species as "{1}".\n'.format(sppLength, groupName).upper())
     __Log('Season of this calculation: ' + season)
     __Log('Table written to {0}'.format(outTable))
     __Log('\nThe species that will be used for analysis:')
     __Log(str(spp) + '\n')
     
-    # Maximum number of species to process at once
-    interval = interval_size
-    # Initialize an empty list to store the intermediate richness rasters
-    richInts = list()
-    
     ############  Process the batches of species to make intermediate richness maps
     ###############################################################################
     # Iterate through the list interval # at a time
-    for x in range(0, len(spp), interval):
+    for x in range(0, sppLength, interval):
         # Grab a subset of species
         sppSubset = spp[x:x+interval]
+        # Get the length of the subset for use in error checking later
+        groupLength = len(sppSubset)
         # Assigned the species subset a name
         gn = '{0}_{1}'.format(groupName, x)
         # Process the richness for the subset of species
@@ -108,32 +112,45 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
               
         #########################################  Copy models to scratch directory
         ###########################################################################
-        # Get a list of paths to the models on the local machine
         __Log('\tCopying models to local drive')
         # Initialize an empty list to store paths to the local models
         sppLocal = list()
         # For each species
         for sp in sppSubset:
-            try:
-                # Get the path to the species' raster
-                sp = sp.lower()
-                startTif = modelDir + "/" + sp
-                # Set the path to the local raster
-                spPath = os.path.join(scratch, sp)
-                # If the species does not have a raster, print a
-                # warning and skip to the next species
-                if not arcpy.Exists(startTif):
-                    __Log('\tWARNING! The species\' raster could not be found -- {0}'.format(sp))
-                    raw_input("Fix, then press enter to resume")
-                # Copy the species' raster from the  species model output directory to 
-                # the local drive
-                arcpy.management.CopyRaster(startTif, spPath, nodata_value=0, 
-                                            pixel_type="8_BIT_UNSIGNED")
-                __Log('\t\t{0}'.format(sp))
-                # Add the path to the local raster to the list of species rasters
-                sppLocal.append(spPath)    
-            except Exception as e:
-                __Log('ERROR in copying a model - {0}'.format(e))
+            # Get the path to the species' raster
+            sp = sp.lower()
+            startTif = modelDir + "/" + sp
+            # Set the path to the local raster
+            spPath = os.path.join(scratch, sp)
+            # If the species does not have a raster, print a
+            # warning and skip to the next species
+            if not arcpy.Exists(startTif):
+                __Log('\tWARNING! The species\' raster could not be found -- {0}'.format(sp))
+                raw_input("Fix, then press enter to resume")
+            # Check that the species has cells with the desired seasonal value, if
+            # so, copy to scratch directory.
+            spObj = arcpy.Raster(startTif)
+            if season == "Winter" and spObj.maximum == 1 and spObj.minimum == 1:
+                __Log("\t{0} doesn't have any winter habitat, skipping...".format(sp))
+                # Deduct this model from count of the subset
+                groupLength = groupLength - 1
+                sppLength = sppLength - 1
+            elif season == "Summer" and spObj.maximum == 2 and spObj.minimum == 2:
+                __Log("\t{0} doesn't have any summer habitat, skipping...".format(sp))
+                # Deduct this model from count of the subset
+                groupLength = groupLength - 1
+                sppLength = sppLength - 1
+            else:            
+                try:
+                    # Copy the species' raster from the  species model output directory to 
+                    # the local drive
+                    arcpy.management.CopyRaster(startTif, spPath, nodata_value=0, 
+                                                pixel_type="8_BIT_UNSIGNED")
+                    __Log('\t\t{0}'.format(sp))
+                    # Add the path to the local raster to the list of species rasters
+                    sppLocal.append(spPath)    
+                except Exception as e:
+                    __Log('ERROR in copying a model - {0}'.format(e))
         __Log('\tAll models copied to {0}'.format(scratch))
       
        ############################################  Reclassify the batch of models
@@ -143,7 +160,6 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         __Log('\tReclassifying')
         # Initialize an empty list to store the paths to the reclassed rasters
         sppReclassed = list()
-        # Designate a where clause to use in the conditional calculation
         if season == "Summer":
             wc = "VALUE = 1 OR VALUE = 3"
         elif season == "Winter":
@@ -151,7 +167,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         elif season == "Any":
             wc = "VALUE > 0"
         # For each of the local species rasters
-        for sp in sppLocal:
+        for sp in sppLocal:        
             ############################################################ Reclassify              
             try:
                 __Log('\t\t{0}'.format(os.path.basename(sp)))
@@ -164,7 +180,9 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 # Create a temporary raster from the species' raster, setting all
                 # values meeting the condition to 1
                 tempRast = arcpy.sa.Con(sp, 1, where_clause = wc)
-                # Check that the reclassed raster has valid values (should be 1's and nodatas)
+                # Check that the reclassed raster has valid values (should be 1's and nodatas),
+                # first build statistics
+                arcpy.management.CalculateStatistics(in_raster_dataset=tempRast, skip_existing=True)
                 if tempRast.minimum != 1:
                     __Log('\tWARNING! Invalid minimum cell value -- {0}'.format(sp))
                 elif tempRast.minimum == 1:
@@ -183,7 +201,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
             ###################################### Optional: expand to CONUS extent    
             try:
                 if expand == True:
-                    tempRast = arcpy.sa.CellStatistics([tempRast, CONUS_extent], 
+                    tempRast = arcpy.sa.CellStatistics([tempRast, gapageconfig.CONUS_extent], 
                                                         "SUM", "DATA")
             except Exception as e:
                 __Log('ERROR expanding reclassed raster - {0}'.format(e))
@@ -207,7 +225,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
             richness.save(outRast)
             __Log('\tSaved to {0}'.format(outRast))
             # Check the max value.  It shouldn't be > the group length.
-            if richness.maximum > len(sppSubset):
+            if richness.maximum > groupLength:
                 __Log('\tWARNING! Invalid maximum cell value in {0}'.format(gn))
             # Add the subset's richness raster to the list of intermediate rasters
             richInts.append(outRast)
@@ -219,10 +237,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         if expand == True:
             try:
                 __Log('Checking intermediate raster count')        
-                if richness.maximum != len(sppSubset):
+                if richness.maximum != groupLength:
                     __Log('A raster was skipped in intermediate richness calculation...quiting')
                     quit
-                elif richness.maximum == len(sppSubset):
+                elif richness.maximum == groupLength:
                     __Log('Intermediate richness used the right number of rasters')
             except Exception as e:
                 __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
@@ -255,10 +273,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     if expand == True:
         try:
             __Log('Checking final richness raster count')        
-            if richness.maximum != len(spp):
+            if richness.maximum != sppLength:
                 __Log('A raster(s) was skipped somewhere...quiting')
                 quit
-            elif richness.maximum == len(spp):
+            elif richness.maximum == sppLength:
                 __Log('Final richness has the right number of rasters')
         except Exception as e:
             __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
