@@ -7,7 +7,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     (list, string, string, string, string, string, string) -> raster object, saved map.
     
     Builds a national map of select systems from the GAP Landcover used in species
-        modeling. Takes several hours to run.
+        modeling. Takes several minutes to run.
         
     Arguments:
     MUlist -- A list of land cover map unit codes that you want to reclass.
@@ -98,8 +98,10 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ############################################## Mosaic regional reclassed land covers
     ####################################################################################
     try:
-        arcpy.management.MosaicToNewRaster(MosList, workDir, keyword + ".tif","", "", "", "1", 
-                                           "MAXIMUM", "")
+        arcpy.management.MosaicToNewRaster(input_rasters=MosList, output_location=workDir, 
+                                           raster_dataset_name_with_extension=keyword + ".tif",
+                                           pixel_type="8_BIT_UNSIGNED", cellsize=30, 
+                                           number_of_bands=1, mosaic_method="MAXIMUM")
     except Exception as e:
         __Log("ERROR mosaicing regions - {0}".format(e))
                                        
@@ -109,7 +111,6 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
         arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir)
         mosaic = arcpy.Raster(workDir + keyword + ".tif")
         arcpy.management.BuildRasterAttributeTable(mosaic)
-        arcpy.management.SetRasterProperties(in_raster=mosaic, nodata="1 0")
         mosaic.save(workDir + keyword + ".tif")
     except Exception as e:
         __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))

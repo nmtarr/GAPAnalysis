@@ -45,12 +45,12 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, C:\GIS_Data\Richness\MyRandomSpecies.csv
     '''    
     
-    import os, datetime, arcpy, shutil  
+    import os, datetime, arcpy, shutil 
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.env.overwriteOutput=True
     arcpy.env.extent = 'MAXOF'
     arcpy.env.pyramid = 'NONE'
-    arcpy.env.snapRaster = gapageconfig.snap_raster
+    arcpy.env.snapRaster = snap_raster
     starttime = datetime.datetime.now()      
     
     # Maximum number of species to process at once
@@ -97,6 +97,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     __Log('\nThe species that will be used for analysis:')
     __Log(str(spp) + '\n')
     
+    ####### Create dictionary to collect raster tables for use in checking the count 
+    ################################# of cells in the original vs. reclassed rasters
+    startTifTables = {}
+    
     ############  Process the batches of species to make intermediate richness maps
     ###############################################################################
     # Iterate through the list interval # at a time
@@ -112,7 +116,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
               
         #########################################  Copy models to scratch directory
         ###########################################################################
-        __Log('\tCopying models to local drive')
+        __Log('\tCopying models to scratch directory')
         # Initialize an empty list to store paths to the local models
         sppLocal = list()
         # For each species
@@ -127,16 +131,46 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
             if not arcpy.Exists(startTif):
                 __Log('\tWARNING! The species\' raster could not be found -- {0}'.format(sp))
                 raw_input("Fix, then press enter to resume")
+            spObj = arcpy.Raster(startTif)
+            
+            # Build a dictionary to store VAT of initial map for error checking later
+            startTifTable = {}
+            startTifCursor = arcpy.SearchCursor(spObj)
+            for row in startTifCursor:
+                startTifTable[row.getValue("VALUE")] = row.getValue("COUNT")
+            anyCount = sum(startTifTable.values())
+            if 2 in startTifTable and 3 in startTifTable:
+                winterCount = startTifTable[2] + startTifTable[3]
+                summerCount = startTifTable[3] + (anyCount - winterCount)
+            if 2 in startTifTable and 3 not in startTifTable:
+                winterCount = startTifTable[2]
+                summerCount = anyCount - winterCount
+            if 2 not in startTifTable and 3 in startTifTable:
+                winterCount = startTifTable[3]
+                summerCount = startTifTable[3]
+            if 1 in startTifTable and 3 in startTifTable:
+                summerCount = startTifTable[1] + startTifTable[3]
+                winterCount = startTifTable[3] + (anyCount - summerCount)
+            if 1 in startTifTable and 3 not in startTifTable:
+                summerCount = startTifTable[1]
+                winterCount = anyCount - summerCount
+            if 1 not in startTifTable and 3 in startTifTable:
+                summerCount = startTifTable[3]
+                winterCount = startTifTable[3]
+            startTifTables[sp] = {}
+            startTifTables[sp]["anyCount"] = anyCount
+            startTifTables[sp]["summerCount"] = summerCount
+            startTifTables[sp]["winterCount"] = winterCount
+            
             # Check that the species has cells with the desired seasonal value, if
             # so, copy to scratch directory.
-            spObj = arcpy.Raster(startTif)
             if season == "Winter" and spObj.maximum == 1 and spObj.minimum == 1:
-                __Log("\t{0} doesn't have any winter habitat, skipping...".format(sp))
+                __Log("\t\t\t{0} doesn't have any winter habitat, skipping...".format(sp))
                 # Deduct this model from count of the subset
                 groupLength = groupLength - 1
-                sppLength = sppLength - 1
+                sppLength = sppLength - 1  
             elif season == "Summer" and spObj.maximum == 2 and spObj.minimum == 2:
-                __Log("\t{0} doesn't have any summer habitat, skipping...".format(sp))
+                __Log("\t\t\t{0} doesn't have any summer habitat, skipping...".format(sp))
                 # Deduct this model from count of the subset
                 groupLength = groupLength - 1
                 sppLength = sppLength - 1
@@ -160,15 +194,17 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         __Log('\tReclassifying')
         # Initialize an empty list to store the paths to the reclassed rasters
         sppReclassed = list()
+        # Assign SQL statements for reclass condition
         if season == "Summer":
             wc = "VALUE = 1 OR VALUE = 3"
         elif season == "Winter":
             wc = "VALUE = 2 OR VALUE = 3"
         elif season == "Any":
             wc = "VALUE > 0"
-        # For each of the local species rasters
-        for sp in sppLocal:        
-            ############################################################ Reclassify              
+        # For each of the local species rasters....
+        for sp in sppLocal:
+            ################################################################ Reclassify 
+            ###########################################################################             
             try:
                 __Log('\t\t{0}'.format(os.path.basename(sp)))
                 # Set a path to the output reclassified raster
@@ -183,37 +219,66 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 # Check that the reclassed raster has valid values (should be 1's and nodatas),
                 # first build statistics
                 arcpy.management.CalculateStatistics(in_raster_dataset=tempRast, skip_existing=True)
-                if tempRast.minimum != 1:
-                    __Log('\tWARNING! Invalid minimum cell value -- {0}'.format(sp))
-                elif tempRast.minimum == 1:
-                    __Log('\tValid minimum cell value')
-                if tempRast.maximum != 1:
-                    __Log('\tWARNING! Invalid maximum cell value -- {0}'.format(sp))
-                elif tempRast.maximum == 1:
-                    __Log('\tValid maximum cell value')
-                if tempRast.mean != 1:
-                    __Log('\tWARNING! Invalid mean cell value -- {0}'.format(sp))
-                elif tempRast.mean == 1:
-                    __Log('\tValid mean cell value')
             except Exception as e:
-                __Log('ERROR in reclassifying a model - {0}'.format(e))                
+                __Log('ERROR in reclassifying a model - {0}'.format(e))
             
-            ###################################### Optional: expand to CONUS extent    
+            ########################################## Optional: expand to CONUS extent
+            ###########################################################################
             try:
                 if expand == True:
-                    tempRast = arcpy.sa.CellStatistics([tempRast, gapageconfig.CONUS_extent], 
+                    tempRast = arcpy.sa.CellStatistics([tempRast, CONUS_extent], 
                                                         "SUM", "DATA")
             except Exception as e:
                 __Log('ERROR expanding reclassed raster - {0}'.format(e))
-                # Save the reclassified raster
             
+            ############################################## Save the reclassified raster
+            ###########################################################################
             tempRast.save(reclassed)
             # Add the reclassed raster's path to the list
             sppReclassed.append(reclassed)
-            # Make sure that the reclassified model exists, pause if not.
+            # Make sure that the reclassified model exists.
             if not arcpy.Exists(reclassed):
-                __Log('\tWARNING! This reclassed raster could not be found -- {0}'.format(sp))
-            
+                __Log('\tWARNING! This reclassed raster could not be found -- {0}'.format(sp))   
+           
+            ############################################## Check the values of tempRast
+            ###########################################################################
+            # Check min, max, and mean values                
+            if tempRast.minimum != 1:
+                __Log('\t\t\tWARNING! Invalid minimum cell value -- {0}'.format(sp))
+            elif tempRast.minimum == 1:
+                __Log('\t\t\tValid minimum cell value')
+            if tempRast.maximum != 1:
+                __Log('\t\t\tWARNING! Invalid maximum cell value -- {0}'.format(sp))
+            elif tempRast.maximum == 1:
+                __Log('\t\t\tValid maximum cell value')
+            if tempRast.mean != 1:
+                __Log('\t\t\tWARNING! Invalid mean cell value -- {0}'.format(sp))
+            elif tempRast.mean == 1:
+                __Log('\t\t\tValid mean cell value')
+            # Check the count of the reclassed raster against the original, expect errors
+            # if grid has over 2 billion cells bcs. VAT can't be built
+            try:
+                tempRastTable = {}
+                tempRastCursor = arcpy.SearchCursor(tempRast)
+                for row in tempRastCursor:
+                    tempRastTable[row.getValue("VALUE")] = row.getValue("COUNT")
+                    # Delete the row and cursor to avoid a lingering .lock file
+                    del row
+                del tempRastCursor
+                tempRast = None
+                if season == "Any" and tempRastTable[1] != startTifTables[sp[-10:]]["anyCount"]:
+                    __Log("\t\t\tWARNING! incorrect total cell count in reclass of {0}".format(sp[-10:]))
+                    __Log("\t\tReclassed count = {0}, initial geotiff count = {1}".format(tempRastTable[1], startTifTables[sp[-10:]]["anyCount"]))
+                elif season == "Summer" and tempRastTable[1] != startTifTables[sp[-10:]]["summerCount"]:
+                    __Log("\t\t\tWARNING! incorrect total cell count in reclass of {0}".format(sp[-10:]))
+                    __Log("\t\tReclassed count = {0}, initial geotiff count = {1}".format(tempRastTable[1], startTifTables[sp[-10:]]["summerCount"]))
+                elif season == "Winter" and tempRastTable[1] != startTifTables[sp[-10:]]["winterCount"]:
+                    __Log("\t\t\tWARNING! incorrect total cell count in reclass of {0}".format(sp[-10:]))
+                    __Log("\t\tReclassed count = {0}, initial geotiff count = {1}".format(tempRastTable[1], startTifTables[sp[-10:]]["winterCount"]))
+                else:
+                    __Log("\t\t\tValid cell count")
+            except Exception as e:
+                __Log("Couldn't check the total cell count of {0}".format(e))  
         __Log('\tAll models reclassified')
     
         ########################################  Calculate richness for the subset
@@ -244,7 +309,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                     __Log('Intermediate richness used the right number of rasters')
             except Exception as e:
                 __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-          
+        
         ################  Delete each of the copied and reclassified species models
         ###########################################################################
         try:
@@ -254,7 +319,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 arcpy.Delete_management(os.path.join(scratch, sp))
         except Exception as e:
             __Log('ERROR in deleting intermediate models - {0}'.format(e))
-            
+         
     #################  Sum the intermediate rasters to calculate the final richness
     ###############################################################################
     try:
@@ -280,7 +345,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 __Log('Final richness has the right number of rasters')
         except Exception as e:
             __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-      
+    
     shutil.rmtree(scratch)
     shutil.rmtree(reclassDir)
     
