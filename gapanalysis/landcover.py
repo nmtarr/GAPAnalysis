@@ -24,6 +24,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ###################################################################################    
     import arcpy, datetime, os
     arcpy.CheckOutExtension("Spatial")
+    arcpy.env.overwriteOutput=True
     
     ########################################################## Some environment settings
     ####################################################################################  
@@ -81,6 +82,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ####################################################################################
     MosList = []
     for lc in regions:
+        __Log("Reclassifying {0}".format(lc))
         grid = arcpy.sa.Raster(LCLoc + lc)
         try:
             RegReclass = arcpy.sa.Reclassify(grid, "VALUE", remap, "NODATA")
@@ -98,6 +100,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ############################################## Mosaic regional reclassed land covers
     ####################################################################################
     try:
+        __Log("Mosaicking reclassified regional outputs")
         arcpy.management.MosaicToNewRaster(input_rasters=MosList, output_location=workDir, 
                                            raster_dataset_name_with_extension=keyword + ".tif",
                                            pixel_type="8_BIT_UNSIGNED", cellsize=30, 
@@ -107,11 +110,17 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
                                        
     ############################## Build a RAT, pyramid, and statistics; set nodata to 0
     ####################################################################################                                   
-    try:        
-        arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir)
-        mosaic = arcpy.Raster(workDir + keyword + ".tif")
+    try:
+        mosaic = workDir + keyword + ".tif"
+        __Log("Changing nodata value to 0")
+        arcpy.management.SetRasterProperties(in_raster=mosaic, 
+                                             nodata="1 0") 
+        __Log("Attempting to build pyramids and statistics")
+        arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir[:-1])
+        __Log("Building a new RAT")
         arcpy.management.BuildRasterAttributeTable(mosaic)
-        mosaic.save(workDir + keyword + ".tif")
+        __Log("Setting cells with value 255 to nodata")
+        arcpy.sa.SetNull(mosaic, mosaic, "VALUE = 255")
     except Exception as e:
         __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))
         
