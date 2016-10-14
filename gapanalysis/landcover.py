@@ -111,16 +111,17 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ############################## Build a RAT, pyramid, and statistics; set nodata to 0
     ####################################################################################                                   
     try:
-        mosaic = workDir + keyword + ".tif"
+        mosaic = arcpy.Raster(workDir + keyword + ".tif")
         __Log("Changing nodata value to 0")
-        arcpy.management.SetRasterProperties(in_raster=mosaic, 
-                                             nodata="1 0") 
+        arcpy.management.SetRasterProperties(in_raster=mosaic, nodata="1 0") 
         __Log("Attempting to build pyramids and statistics")
-        arcpy.management.BuildPyramidsandStatistics(in_workspace=workDir[:-1])
+        arcpy.management.CalculateStatistics(mosaic)
         __Log("Building a new RAT")
         arcpy.management.BuildRasterAttributeTable(mosaic)
         __Log("Setting cells with value 255 to nodata")
-        arcpy.sa.SetNull(mosaic, mosaic, "VALUE = 255")
+        mosaic2 = arcpy.sa.SetNull(mosaic, mosaic, "VALUE = 255")
+        __Log("Saving setnulled raster")
+        mosaic2.save(workDir + keyword + ".tif")
     except Exception as e:
         __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))
         

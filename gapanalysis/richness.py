@@ -133,7 +133,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 raw_input("Fix, then press enter to resume")
             spObj = arcpy.Raster(startTif)
             
-            # Build a dictionary to store VAT of initial map for error checking later
+            # Build a dictionary to store RAT of initial map for error checking later
             startTifTable = {}
             startTifCursor = arcpy.SearchCursor(spObj)
             for row in startTifCursor:
