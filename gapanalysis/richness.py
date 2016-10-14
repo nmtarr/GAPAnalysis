@@ -309,7 +309,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                     __Log('Intermediate richness used the right number of rasters')
             except Exception as e:
                 __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-        
+        """
         ################  Delete each of the copied and reclassified species models
         ###########################################################################
         try:
@@ -319,7 +319,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 arcpy.Delete_management(os.path.join(scratch, sp))
         except Exception as e:
             __Log('ERROR in deleting intermediate models - {0}'.format(e))
-         
+         """
     #################  Sum the intermediate rasters to calculate the final richness
     ###############################################################################
     try:
@@ -345,10 +345,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                 __Log('Final richness has the right number of rasters')
         except Exception as e:
             __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-    
+    """
     shutil.rmtree(scratch)
     shutil.rmtree(reclassDir)
-    
+    """
     endtime = datetime.datetime.now()
     runtime = endtime - starttime
     __Log("Total runtime was: " + str(runtime))

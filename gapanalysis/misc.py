@@ -22,7 +22,7 @@ def MakeRemapList(mapUnitCodes, reclassValue):
     return remap  
     
 
-def CheckRasters(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=3,
+def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=3,
                  minimum=3):
     '''
     (list) -> dictionary
