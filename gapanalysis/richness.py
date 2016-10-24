@@ -48,7 +48,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     import os, datetime, arcpy, shutil 
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.env.overwriteOutput=True
-    arcpy.env.extent = 'MAXOF'
+    arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773, 
+                                    3177272.0779999997)    
     arcpy.env.pyramid = 'NONE'
     arcpy.env.snapRaster = snap_raster
     starttime = datetime.datetime.now()      
@@ -116,6 +117,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
               
         #########################################  Copy models to scratch directory
         ###########################################################################
+        arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773, 
+                                        3177272.0779999997)  
         __Log('\tCopying models to scratch directory')
         # Initialize an empty list to store paths to the local models
         sppLocal = list()
@@ -284,10 +287,13 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         ########################################  Calculate richness for the subset
         ###########################################################################
         try:
+            arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773,
+                                            3177272.0779999997)  
             richness = arcpy.sa.CellStatistics(sppReclassed, 'SUM', 'DATA')
             __Log('\tRichness processed')
             outRast = os.path.join(intDir, gn + '.tif')
             richness.save(outRast)
+            arcpy.management.BuildRasterAttributeTable(in_raster=outRast, overwrite=True)
             __Log('\tSaved to {0}'.format(outRast))
             # Check the max value.  It shouldn't be > the group length.
             if richness.maximum > groupLength:
@@ -323,6 +329,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     #################  Sum the intermediate rasters to calculate the final richness
     ###############################################################################
     try:
+        arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773, 
+                            3177272.0779999997)  
         __Log('Calculating final richness')
         richness = arcpy.sa.CellStatistics(richInts, 'SUM', 'DATA')
         __Log('Richness calculated')
