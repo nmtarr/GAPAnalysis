@@ -48,10 +48,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     import os, datetime, arcpy, shutil 
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.env.overwriteOutput=True
-    arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773, 
-                                    3177272.0779999997)    
+    arcpy.env.extent = "MAXOF" 
     arcpy.env.pyramid = 'NONE'
     arcpy.env.snapRaster = snap_raster
+    arcpy.env.rasterStatistics = "STATISTICS"
     starttime = datetime.datetime.now()      
     
     # Maximum number of species to process at once
@@ -117,13 +117,12 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
               
         #########################################  Copy models to scratch directory
         ###########################################################################
-        arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773, 
-                                        3177272.0779999997)  
         __Log('\tCopying models to scratch directory')
         # Initialize an empty list to store paths to the local models
         sppLocal = list()
         # For each species
         for sp in sppSubset:
+            arcpy.env.extent = "MAXOF"
             # Get the path to the species' raster
             sp = sp.lower()
             startTif = modelDir + "/" + sp
@@ -182,7 +181,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
                     # Copy the species' raster from the  species model output directory to 
                     # the local drive
                     arcpy.management.CopyRaster(startTif, spPath, nodata_value=0, 
-                                                pixel_type="8_BIT_UNSIGNED")
+                                                pixel_type="32_BIT_UNSIGNED")
                     __Log('\t\t{0}'.format(sp))
                     # Add the path to the local raster to the list of species rasters
                     sppLocal.append(spPath)    
