@@ -197,19 +197,19 @@ def CalculateRepresentation(zone_file, zone_name, zone_field, habitat_maps, spec
         df2 = pd.DataFrame(index=df2indexList, columns=["COUNT"]).fillna(value=0)
         try:
             __Log("Reading summed raster's table, writing in a dataframe") 
-            __Log("Value:Count")
+            __Log("\tValue:Count")
             rows = arcpy.SearchCursor(Sum)
             for r in rows:
                 # Make sure no unexpected values showed up
                 if r.getValue("VALUE") not in df2.index:
                     __Log("ERROR!!!")
-                __Log("{0}:{1}".format(r.getValue("VALUE"), 
+                __Log("\t{0}:{1}".format(r.getValue("VALUE"), 
                       int(r.getValue("COUNT"))))
                 df2.loc[r.getValue("VALUE"), "COUNT"] = r.getValue("COUNT")
             del rows
             del r
         except Exception as e:
-            __Log("ERROR -- {0}".format(e))
+            __Log("!!!!!!ERROR!!!!!!!!! -- {0}".format(e))
             # Not doing anything will leave values set to zero in df2
     
         # Do some table manipulation to prep for the next step
@@ -273,8 +273,8 @@ def CalculateRepresentation(zone_file, zone_name, zone_field, habitat_maps, spec
     
     ######################################################### Update and save csv files
     ###################################################################################
-    df3FileName = workDir + "/archive/" + zone_name + starttime.strftime('%Y-%m-%d-%H-%M') \
-                    + ".csv"
+    df3FileName = workDir + "/archive/" + zone_name + "_" + \
+                    starttime.strftime('%Y-%m-%d-%H-%M') + ".csv"
     __Log("Saving new species table to " + df3FileName)
     df3.to_csv(df3FileName, index_col=["GeoTiff", "Zone"])
     
@@ -287,9 +287,9 @@ def CalculateRepresentation(zone_file, zone_name, zone_field, habitat_maps, spec
         dfMas = df3
     
     # Save an archive copy of master table/dataframe
-    dfMas.to_csv(workDir + "/archive/" + zone_name + "_Master" + \
+    dfMas.to_csv(workDir + "/archive/" + zone_name + "_Master_" + \
                 starttime.strftime('%Y-%m-%d-%H-%M') + ".csv", )
-    __Log("Creating " + workDir + "/archive/" + zone_name + "_Master" + \
+    __Log("Creating " + workDir + "/archive/" + zone_name + "_Master_" + \
             starttime.strftime('%Y-%m-%d-%H-%M') + ".csv")
     
     __Log("Updating master table with new calculations")
