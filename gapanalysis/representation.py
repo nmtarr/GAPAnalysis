@@ -1,9 +1,9 @@
 """
-Created Oct312016 by N. Tarr
+Created Oct 31, 2016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def CalculateRepresentation(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
+def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
                             snap_raster):
     '''
     (string, string, string, list, string, string) -> pandas dataframe
