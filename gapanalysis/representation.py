@@ -180,11 +180,9 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         try:
-            __Log("Saving and checking summed raster")
-            Sum.save(scratch + "tmpSum.tif")
-            arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
-            arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", overwrite=True)
-            RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
+            __Log("Checking summed raster")
+            arcpy.management.BuildRasterAttributeTable(Sum, overwrite=True)
+            RasterReport(Sum)
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
@@ -241,7 +239,6 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         # Delete intermediate files
         try:
             arcpy.management.Delete(scratch + sp)
-            arcpy.management.Delete(scratch + "tmpSum.tif")
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
