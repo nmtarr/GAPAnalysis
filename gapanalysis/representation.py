@@ -3,8 +3,8 @@ Created Oct312016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
-              snap_raster):
+def CalculateRepresentation(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
+                            snap_raster):
     '''
     (string, string, string, list, string, string) -> pandas dataframe
     
@@ -23,14 +23,15 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     
     Arguments:
     zone_file -- A raster layer of the continental U.S. with zones of interest assigned
-        a unique value/code.  Must have following specs:
-                a) areas of interest have numeric, integer codes
+        a unique value/code.  Must have following properties:
+                a) areas of interest have numeric, zon-zero, integer codes.  If 0's exist
+                    reclass them to 99999 or something recognizable first.
                 b) 32 bit integer pixel type
                 c) 30m x 30m
                 d) Albers NAD83 projection
                 e) 1 band
                 f) GeoTiff format
-                g) valid raster attribute table  
+                g) valid raster attribute table 
     zone_name -- A short name to use in file naming (e.g., "Pine")
     zone_field -- The field in in the zone_file to use in the process.  It must be
         an integer with unique values for each zone you are interested in. NOTE: Zero
@@ -63,40 +64,6 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     arcpy.env.rasterStatistics = "STATISTICS"
     pd.set_option('display.width', 1000)
     
-    ############################################### Function to check raster properties
-    ###################################################################################
-    def RasterReport(raster):
-        print("----" + str(raster))
-        print("\tMax: " + str(raster.maximum))
-        print("\tMin: " + str(raster.minimum))
-        print("\tNoDataValue: " + str(raster.noDataValue))
-        desObj = arcpy.Describe(raster)
-        print("\t" + str(desObj.spatialReference.projectionName))
-        print("\t" + str(desObj.format))
-        print("\t" + str(desObj.pixelType))
-        print("\tInteger = " + str(raster.isInteger))
-        print("\tHas RAT = " + str(raster.hasRAT))
-        try:
-            # Make an indicator variable for checking whether the cursor is 
-            # empty, otherwise the cursor will quietly pass tables with no rows.
-            RowsOK = False                
-            # Make a cursor as a test to see if there's a vat                
-            cursor = arcpy.SearchCursor(raster)
-            for c in cursor:
-                print("\tVALUE:COUNT")
-                print "\t" + str(c.getValue("VALUE")) + ":" + str(c.getValue("COUNT"))
-                countt = c.getValue("COUNT")
-                if countt < 0:
-                    print "\t" + raster + "  - has bad counts"
-                    RowsOK = True
-                elif countt > 0:
-                    # Change RowsOK to True since the table has rows.                          
-                    RowsOK = True
-            if RowsOK == False:
-                print("\tRows not OK")
-        except:
-            print "\tNo Cursor"
-            
     ################################ Create the working directories if they don't exist
     ###################################################################################
     # Create working directory
@@ -110,7 +77,7 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     archive = workDir + "/Archive"
     if not os.path.exists(archive):
         os.makedirs(archive)
-    
+        
     ############################################ Function to write data to the log file
     ###################################################################################
     log = workDir + "/log.txt"
@@ -122,8 +89,42 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     starttime0 = datetime.now()
     timestamp = starttime0.strftime('%Y-%m-%d')
     __Log("\n\n\n****************  " + timestamp + "  **************************\n")
-    __Log("\nRasters that were processed: " + str(habitat_maps[:]) + "\n")
+    __Log("\nRasters that were processed: " + str(habitat_maps) + "\n")
     __Log("Checked for and built required directories, lists, & dataframes")
+    
+    ############################################### Function to check raster properties
+    ###################################################################################
+    def RasterReport(raster):
+        __Log("----" + str(raster))
+        __Log("\tMax: " + str(raster.maximum))
+        __Log("\tMin: " + str(raster.minimum))
+        __Log("\tNoDataValue: " + str(raster.noDataValue))
+        desObj = arcpy.Describe(raster)
+        __Log("\t" + str(desObj.spatialReference.projectionName))
+        __Log("\t" + str(desObj.format))
+        __Log("\t" + str(desObj.pixelType))
+        __Log("\tInteger = " + str(raster.isInteger))
+        __Log("\tHas RAT = " + str(raster.hasRAT))
+        try:
+            # Make an indicator variable for checking whether the cursor is 
+            # empty, otherwise the cursor will quietly pass tables with no rows.
+            RowsOK = False                
+            # Make a cursor as a test to see if there's a vat                
+            cursor = arcpy.SearchCursor(raster)
+            __Log("\tVALUE:COUNT")
+            for c in cursor:
+                __Log("\t" + str(c.getValue("VALUE")) + ":" + str(c.getValue("COUNT")))
+                countt = c.getValue("COUNT")
+                if countt < 0:
+                    __Log("\t" + raster + "  - has bad counts")
+                    RowsOK = True
+                elif countt > 0:
+                    # Change RowsOK to True since the table has rows.                          
+                    RowsOK = True
+            if RowsOK == False:
+                __Log("\tRows not OK")
+        except:
+            __Log("\tNo Cursor")
     
     ####################################################### Make a dictionary of values
     ###################################################################################
@@ -163,20 +164,29 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     for sp in habitat_maps:
         __Log("\n-------" + sp + "-------")
         starttime = datetime.now()
-        timestamp = starttime.strftime('%Y-%m-%d')
+        timestamp = starttime.strftime('%Y-%m-%d-%M')
         __Log("Copying habitat map to 32 bit, temp version")
-        arcpy.management.CopyRaster(speciesDir + sp, scratch + sp, nodata_value=0, 
-                                    pixel_type="32_BIT_UNSIGNED")
-        __Log("Building raster object")
-        spMap = arcpy.Raster(scratch + sp)
-        RasterReport(spMap)
-        __Log("Summing zone and species map")
-        Sum = arcpy.sa.CellStatistics([spMap, zone_file * 10], "SUM", "DATA")
-        __Log("Saving and checking summed raster")
-        Sum.save(scratch + "tmpSum.tif")
-        arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
-        arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", overwrite=True)
-        RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
+        try:
+            arcpy.management.CopyRaster(speciesDir + sp, scratch + sp, nodata_value=0, 
+                                       pixel_type="32_BIT_UNSIGNED")
+            __Log("Building raster object")
+            spMap = arcpy.Raster(scratch + sp)
+            RasterReport(spMap)
+        except Exception as e:
+            __Log("ERROR -- {0}".format(e))
+        try:    
+            __Log("Summing zone and species map")
+            Sum = arcpy.sa.CellStatistics([spMap, zone_file * 10], "SUM", "DATA")
+        except Exception as e:
+            __Log("ERROR -- {0}".format(e))
+        try:
+            __Log("Saving and checking summed raster")
+            Sum.save(scratch + "tmpSum.tif")
+            arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
+            arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", overwrite=True)
+            RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
+        except Exception as e:
+            __Log("ERROR -- {0}".format(e))
         
         ############################################## Fill out dataframes with results
         ###############################################################################
@@ -185,48 +195,55 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         for i in zoneValues:
             df2indexList = df2indexList + [i*10 + k for k in ValueMap.keys()]
         df2 = pd.DataFrame(index=df2indexList, columns=["COUNT"]).fillna(value=0)
-        
-        __Log("Reading summed raster's table, writing in a dataframe") 
         try:
+            __Log("Reading summed raster's table, writing in a dataframe") 
+            __Log("Value:Count")
             rows = arcpy.SearchCursor(Sum)
             for r in rows:
+                # Make sure no unexpected values showed up
                 if r.getValue("VALUE") not in df2.index:
                     __Log("ERROR!!!")
-                __Log("Cursor: v{0}, c{1}".format(r.getValue("VALUE"), int(r.getValue("COUNT"))))
+                __Log("{0}:{1}".format(r.getValue("VALUE"), 
+                      int(r.getValue("COUNT"))))
                 df2.loc[r.getValue("VALUE"), "COUNT"] = r.getValue("COUNT")
-            del(rows)
-            del(r)
-                
+            del rows
+            del r
         except Exception as e:
-            print("ERROR -- {0}".format(e))
+            __Log("ERROR -- {0}".format(e))
             # Not doing anything will leave values set to zero in df2
     
         # Do some table manipulation to prep for the next step
-        df2["Season"] = [ValueMap[int(str(x)[-1:])] for x in df2.index]
-        df2["Zone"] = [int(str(l)[:-1]) for l in df2.index]
-        df2.set_index(["Zone", "Season"], drop=True, inplace=True)
-        # Fill out the species' entries in main DataFrame using the one just created
-        # First you need a list of index values to loop on, since Dataframe is multiindexed
-        df2Index = []
-        for a in list(df2.index.levels[0]):
-            for b in list(df2.index.levels[1]):
-                df2Index.append((a,b))
-        # Fill out df1 with values from df2
-        for x in df2Index:
-            df1.loc[(sp, x[0]), x[1]] = int(df2.loc[(x[0], x[1])])
-    
-        # Get end time and time it took to run the species
-        endtime = datetime.now()
-        delta = endtime - starttime
-        __Log("Processing time: " + str(delta))
-    
-        # Fillout runtime and date fields in the main DataFrame
-        df1.loc[sp, "RunTime"] = str(delta)
-        df1.loc[sp, "Date"] = str(timestamp)
+        try:
+            df2["Season"] = [ValueMap[int(str(x)[-1:])] for x in df2.index]
+            df2["Zone"] = [int(str(l)[:-1]) for l in df2.index]
+            df2.set_index(["Zone", "Season"], drop=True, inplace=True)
+            # Fill out the species' entries in main DataFrame using the one just created
+            # First you need a list of index values to loop on, since Dataframe is multiindexed
+            df2Index = []
+            for a in list(df2.index.levels[0]):
+                for b in list(df2.index.levels[1]):
+                    df2Index.append((a,b))
+            # Fill out df1 with values from df2
+            for x in df2Index:
+                df1.loc[(sp, x[0]), x[1]] = int(df2.loc[(x[0], x[1])])
         
+            # Get end time and time it took to run the species
+            endtime = datetime.now()
+            delta = endtime - starttime
+            __Log("Processing time: " + str(delta))
+        
+            # Fillout runtime and date fields in the main DataFrame
+            df1.loc[sp, "RunTime"] = str(delta)
+            df1.loc[sp, "Date"] = str(timestamp)
+        except Exception as e:
+            __Log("ERROR -- {0}".format(e))
+            
         # Delete intermediate files
-        arcpy.management.Delete(scratch + sp)
-        arcpy.management.Delete(scratch + "tmpSum.tif")
+        try:
+            arcpy.management.Delete(scratch + sp)
+            arcpy.management.Delete(scratch + "tmpSum.tif")
+        except Exception as e:
+            __Log("ERROR -- {0}".format(e))
         
     ######################################## Data munging of the multispecies dataframe
     ###################################################################################
@@ -253,11 +270,11 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     ############################################ Print the results in the shell and log
     ###################################################################################
     df3.set_index([df3.index, "Zone"], inplace=True)
-    print(df3.filter(["Zone", "strUC", "PercSummer", "PercWinter", "PercYearRound"]))
     
     ######################################################### Update and save csv files
     ###################################################################################
-    df3FileName = workDir + "/archive/" + zone_name + starttime.strftime('%Y-%m-%d-%H') + ".csv"
+    df3FileName = workDir + "/archive/" + zone_name + starttime.strftime('%Y-%m-%d-%H-%M') \
+                    + ".csv"
     __Log("Saving new species table to " + df3FileName)
     df3.to_csv(df3FileName, index_col=["GeoTiff", "Zone"])
     
@@ -271,21 +288,21 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     
     # Save an archive copy of master table/dataframe
     dfMas.to_csv(workDir + "/archive/" + zone_name + "_Master" + \
-                starttime.strftime('%Y-%m-%d-%H') + ".csv", )
-    __Log("Created " + workDir + "/archive/" + zone_name + "_Master" + \
-            starttime.strftime('%Y-%m-%d-%H') + ".csv")
+                starttime.strftime('%Y-%m-%d-%H-%M') + ".csv", )
+    __Log("Creating " + workDir + "/archive/" + zone_name + "_Master" + \
+            starttime.strftime('%Y-%m-%d-%H-%M') + ".csv")
     
     __Log("Updating master table with new calculations")
     dfMas.update(df3)
     
-    __Log("Concating species that haven't been run before")
+    __Log("Concating species that haven't been run before, saving")
     newMod = [x for x in df3.index if x not in dfMas.index]
     dfNewMod = df3.reindex(newMod)
     dfNewMas = pd.concat([dfMas, dfNewMod])
     dfNewMas.to_csv(masterFileName, index_col=["GeoTiff", "Zone"])
     
     ########################################################################## Clean up
-    ###################################################################################
+    ###################################################################################   
     df1 = None
     df2 = None
     df3 = None
