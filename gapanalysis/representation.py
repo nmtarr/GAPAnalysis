@@ -19,7 +19,7 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         process is run, new species are added to the existing table and existing entries
         are updated.  The result table contains a field for date run and runtime for 
         each species.  The table with all species that have been run is returned as a 
-        pandas dataframe.
+        pandas dataframe.  NOTE: the extent of analyses is set to that of the zone_file.
     
     Arguments:
     zone_file -- A raster layer of the continental U.S. with zones of interest assigned
@@ -180,9 +180,12 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         try:
-            __Log("Checking summed raster")
-            arcpy.management.BuildRasterAttributeTable(Sum, overwrite=True)
-            RasterReport(Sum)
+            __Log("Saving and checking summed raster")
+            Sum.save(scratch + "tmpSum.tif")
+            arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
+            arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", 
+                                                        overwrite=True)
+            RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
@@ -212,8 +215,15 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     
         # Do some table manipulation to prep for the next step
         try:
-            df2["Season"] = [ValueMap[int(str(x)[-1:])] for x in df2.index]
-            df2["Zone"] = [int(str(l)[:-1]) for l in df2.index]
+            # if else statement below should account for zones with zeros.
+            df2["Season"] = [ValueMap[int(str(x)[-1:])] 
+                            if len(str(x))>1 
+                            else ValueMap[int(str(x))] 
+                            for x in df2.index]
+            df2["Zone"] = [int(str(l)[:-1]) 
+                            if len(str(l))>1 
+                            else 0 
+                            for l in df2.index]
             df2.set_index(["Zone", "Season"], drop=True, inplace=True)
             # Fill out the species' entries in main DataFrame using the one just created
             # First you need a list of index values to loop on, since Dataframe is multiindexed
@@ -239,6 +249,7 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         # Delete intermediate files
         try:
             arcpy.management.Delete(scratch + sp)
+            arcpy.management.Delete(scratch + "tmpSum.tif")
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         

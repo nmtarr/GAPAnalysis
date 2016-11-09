@@ -1,4 +1,4 @@
-def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log, CONUS_extent, 
+def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CONUS_extent, 
                     snap_raster, expand=False):    
     '''
     (list, str, str, str, str, int, str) -> str, str
@@ -25,8 +25,6 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
         or "Any". "Any" will reclassify output so that any value > 0 gets reclassed to "1" and
         is the default. 
     interval_size -- How many rasters to include in an intermediate batch.  20 is a good number.
-    log -- Path and name of log file to save print statements, errors, and code to.  Recommended
-        location is "os.path.join(outLoc, 'log_' + groupName + '.txt')"
     expand -- Default to False.  If you set to true, then each reclassed raster will be added to
         a raster of CONUS extent with the top, left 9 pixels having a value of 1, and all others 
         with a value of zero.  Doing this provides a check that each model was added during the 
@@ -63,13 +61,17 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, log
     
     ############################################# create directories for the output
     ###############################################################################
-    outDir = os.path.join(outLoc, groupName + '_Richness')    
+    outDir = os.path.join(outLoc, groupName)    
     scratch = os.path.join(outDir,'_scratch')
     reclassDir = os.path.join(outDir, '_reclassed')
     intDir = os.path.join(outDir, 'Richness_intermediates')
     for x in [scratch, reclassDir, intDir, outDir]:
         if not os.path.exists(x):
             os.makedirs(x)
+    log = outDir+"/Log{0}.txt".format(groupName)
+    if not os.path.exists(log):
+        logObj = open(log, "wb")
+        logObj.close()
     
     ######################################## Function to write data to the log file
     ###############################################################################
