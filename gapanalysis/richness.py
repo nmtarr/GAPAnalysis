@@ -48,8 +48,9 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
     arcpy.env.overwriteOutput=True
     arcpy.env.extent = "MAXOF" 
     arcpy.env.pyramid = 'NONE'
-    arcpy.env.snapRaster = snap_raster
+    arcpy.env.snapRaster = CONUS_extent
     arcpy.env.rasterStatistics = "STATISTICS"
+    arcpy.env.cellSize = 30
     starttime = datetime.datetime.now()      
     
     # Maximum number of species to process at once
@@ -316,17 +317,17 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
                     __Log('Intermediate richness used the right number of rasters')
             except Exception as e:
                 __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-        """
+        
         ################  Delete each of the copied and reclassified species models
         ###########################################################################
         try:
-            for rast in sppReclassed:
-                arcpy.Delete_management(rast)
+            """for rast in sppReclassed:
+                arcpy.Delete_management(rast)"""
             for sp in sppSubset:
                 arcpy.Delete_management(os.path.join(scratch, sp))
         except Exception as e:
             __Log('ERROR in deleting intermediate models - {0}'.format(e))
-         """
+         
     #################  Sum the intermediate rasters to calculate the final richness
     ###############################################################################
     try:
@@ -354,10 +355,9 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
                 __Log('Final richness has the right number of rasters')
         except Exception as e:
             __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
-    """
+    
     shutil.rmtree(scratch)
-    shutil.rmtree(reclassDir)
-    """
+    """shutil.rmtree(reclassDir)"""
     endtime = datetime.datetime.now()
     runtime = endtime - starttime
     __Log("Total runtime was: " + str(runtime))
