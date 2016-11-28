@@ -91,6 +91,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
     
     ###################################################### Write header to log file
     ###############################################################################
+    __Log("WARNING!!!  This module uses the arcpy Cell Statistics tool, which is known \
+            to provide slightly inconsistent and incorrect answers.")    
     __Log("\n" + ("#"*67))
     __Log("The results from richness processing")
     __Log("#"*67)    
@@ -184,7 +186,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
                     # Copy the species' raster from the  species model output directory to 
                     # the local drive
                     arcpy.management.CopyRaster(startTif, spPath, nodata_value=0, 
-                                                pixel_type="32_BIT_UNSIGNED")
+                                                pixel_type="2_BIT")
                     __Log('\t\t{0}'.format(sp))
                     # Add the path to the local raster to the list of species rasters
                     sppLocal.append(spPath)    
@@ -321,8 +323,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
         ################  Delete each of the copied and reclassified species models
         ###########################################################################
         try:
-            """for rast in sppReclassed:
-                arcpy.Delete_management(rast)"""
+            for rast in sppReclassed:
+                arcpy.Delete_management(rast)
             for sp in sppSubset:
                 arcpy.Delete_management(os.path.join(scratch, sp))
         except Exception as e:
@@ -357,7 +359,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
             __Log('ERROR in checking intermediate richness raster count - {0}'.format(e))
     
     shutil.rmtree(scratch)
-    """shutil.rmtree(reclassDir)"""
+    shutil.rmtree(reclassDir)
     endtime = datetime.datetime.now()
     runtime = endtime - starttime
     __Log("Total runtime was: " + str(runtime))
