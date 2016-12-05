@@ -1,5 +1,5 @@
 def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CONUS_extent, 
-                    snap_raster, expand=False):    
+                    expand=False):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -32,8 +32,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
         data directory.
     CONUS_extent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
-        should be NAD_1983_Albers and cell size 30x30 m.
-    snap_raster -- A 30x30m cell raster to use as a snap grid during processing.
+        should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
@@ -46,11 +45,12 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
     import os, datetime, arcpy, shutil 
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.env.overwriteOutput=True
-    arcpy.env.extent = "MAXOF" 
     arcpy.env.pyramid = 'NONE'
     arcpy.env.snapRaster = CONUS_extent
     arcpy.env.rasterStatistics = "STATISTICS"
     arcpy.env.cellSize = 30
+    arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773,
+                                            3177272.0779999997) 
     starttime = datetime.datetime.now()      
     
     # Maximum number of species to process at once
@@ -127,7 +127,6 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
         sppLocal = list()
         # For each species
         for sp in sppSubset:
-            arcpy.env.extent = "MAXOF"
             # Get the path to the species' raster
             sp = sp.lower()
             startTif = modelDir + "/" + sp
@@ -200,7 +199,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
         arcpy.env.workspace = reclassDir
         __Log('\tReclassifying')
         # Initialize an empty list to store the paths to the reclassed rasters
-        sppReclassed = list()
+        sppReclassed = []
         # Assign SQL statements for reclass condition
         if season == "Summer":
             wc = "VALUE = 1 OR VALUE = 3"
@@ -225,7 +224,8 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
                 tempRast = arcpy.sa.Con(sp, 1, where_clause = wc)
                 # Check that the reclassed raster has valid values (should be 1's and nodatas),
                 # first build statistics
-                arcpy.management.CalculateStatistics(in_raster_dataset=tempRast, skip_existing=True)
+                arcpy.management.CalculateStatistics(in_raster_dataset=tempRast, 
+                                                     skip_existing=True)
             except Exception as e:
                 __Log('ERROR in reclassifying a model - {0}'.format(e))
             
@@ -287,12 +287,12 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
             except Exception as e:
                 __Log("Couldn't check the total cell count of {0}".format(e))  
         __Log('\tAll models reclassified')
+        arcpy.management.Delete("in_memory")
     
         ########################################  Calculate richness for the subset
         ###########################################################################
+            
         try:
-            arcpy.env.extent = arcpy.Extent(-2361141.227, 262172.07799999975, 2262968.773,
-                                            3177272.0779999997)  
             richness = arcpy.sa.CellStatistics(sppReclassed, 'SUM', 'DATA')
             __Log('\tRichness processed')
             outRast = os.path.join(intDir, gn + '.tif')
@@ -300,7 +300,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
             arcpy.management.BuildRasterAttributeTable(in_raster=outRast, overwrite=True)
             __Log('\tSaved to {0}'.format(outRast))
             # Check the max value.  It shouldn't be > the group length.
-            if richness.maximum > groupLength:
+            if richness.maximum > groupLength + 1:
                 __Log('\tWARNING! Invalid maximum cell value in {0}'.format(gn))
             # Add the subset's richness raster to the list of intermediate rasters
             richInts.append(outRast)
