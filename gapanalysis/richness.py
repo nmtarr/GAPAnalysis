@@ -44,6 +44,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, CON
     
     import os, datetime, arcpy, shutil 
     arcpy.CheckOutExtension('SPATIAL')
+    arcpy.ResetEnvironments()
     arcpy.env.overwriteOutput=True
     arcpy.env.pyramid = 'NONE'
     arcpy.env.snapRaster = CONUS_extent

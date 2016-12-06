@@ -4,6 +4,150 @@ A module of functions related to managing the data needed for analyses.
 
 
 """
+def MakeSeasonalBinary(rasters, seasons, fromDir, toDir, conusRaster):
+    '''
+    (list, list, string, string, raster) -> saved rasters
+    
+    Copies a GAP habitat map that is in the format of values 1-3 and nodata (no zeros) 
+        and with an extent defined by the species range to a full CONUS extent version
+        with zero's and 1's throughout. A raster is saved for each season in "Summer", 
+        "Winter", or "Any" directory.  Also adds 9 pixels to the upper left corner of 
+        the map if the conus raster has them.
+        
+    Arguments:
+    rasters -- A list of rasters to copy.
+    seasons -- A list of seasons create rasters for.
+    fromDir -- Directory to copy rasters from.
+    toDir -- Directory to create seasonal subdirectories into and save to.
+    conusRaster -- A full continental extent raster (30m, albers), composed entirely of
+        zeros and counter pixels with value "1" in the top left corner if desired.  This
+        layer is used for setting the extent, snapgrid, and adding the counter pixels.
+    
+    Examples:
+    >>> gapanalysis.data.MakeSeasonalBinary(rasters=arcpy.ListRasters(),
+                                            seasons=["any", "Summer", "w"],
+                                            fromDir="C:/data/maps/"
+                                            toDir="C:/data/Seasonal/",
+                                            conusRaster="C:/data/conus_ext_cnt")
+    >>>
+    '''
+    ################################################### import packages, set environments
+    #####################################################################################
+    import arcpy, os, datetime
+    arcpy.ResetEnvironments()
+    arcpy.CheckOutExtension("Spatial")
+    arcpy.env.overwriteOutput=True
+    arcpy.env.snapRaster = conusRaster
+    arcpy.env.pyramid = 'PYRAMIDS'
+    arcpy.env.rasterStatistics = "STATISTICS"
+    arcpy.env.cellSize = 30
+    arcpy.env.scratchworkspace = toDir
+    arcpy.env.extent = conusRaster
+    
+    ################################################### create directories for the output
+    #####################################################################################
+    summerDir = os.path.join(toDir, 'Summer') 
+    winterDir = os.path.join(toDir,'Winter')
+    anyDir = os.path.join(toDir, 'Any')
+    for x in [summerDir, winterDir, anyDir]:
+        if not os.path.exists(x):
+            os.makedirs(x)
+    log = toDir + "log.txt"
+    logg = open(log, "a")
+    logg.close()
+    
+    ############################################## Function to write data to the log file
+    #####################################################################################
+    def __Log(content):
+        print content
+        with open(log, 'a') as logDoc:
+            logDoc.write(content + '\n')
+            
+    ############################################################################  Process
+    #####################################################################################
+    for raster in rasters:
+        start1 = datetime.datetime.now()
+        date = start1.strftime('%Y,%m,%d')
+        print(raster)
+        ############################################### expand, fill with zeros, and copy
+        #################################################################################
+        # Summer
+        if "Summer" in seasons or "s" in seasons or "S" in seasons or "summer" in seasons:
+            print("\tSummer")
+            try:
+                rangewide = arcpy.Raster(fromDir + raster)
+                print("\tReclassifying")
+                summer = arcpy.sa.Con(rangewide, 1, where_clause="VALUE = 1 OR VALUE = 3")
+                print("\tAdding 0's")            
+                summer_0 = arcpy.sa.Con(arcpy.sa.IsNull(summer), 0, summer)
+                print("\tAdding count pixels")            
+                summer_cnt = summer_0 + conusRaster
+                print("\tSaving")            
+                arcpy.management.CopyRaster(in_raster=summer_cnt, 
+                                            out_rasterdataset=toDir + "Summer/" + raster, 
+                                            pixel_type="1_BIT", 
+                                            nodata_value="")
+                print("\tBuilding table")
+                arcpy.management.BuildRasterAttributeTable(toDir + "Summer/" + raster,
+                                                           overwrite=True)
+                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+            except Exception as e:
+                print(e)
+                __Log(raster + "," + fromDir + raster + ",Summer," + date + "," + e)
+                                                           
+        # Winter
+        if "Winter" in seasons or "winter" in seasons or "W" in seasons or "w" in seasons:
+            print("\tWinter")
+            try:
+                rangewide = arcpy.Raster(fromDir + raster)
+                print("\tReclassifying")
+                winter = arcpy.sa.Con(rangewide, 1, where_clause="VALUE = 2 OR VALUE = 3")
+                print("\tAdding 0's")                 
+                winter_0 = arcpy.sa.Con(arcpy.sa.IsNull(winter), 0, winter)
+                print("\tAdding count pixels")                     
+                winter_cnt = winter_0 + conusRaster
+                print("\tSaving")            
+                arcpy.management.CopyRaster(in_raster=winter_cnt, 
+                                            out_rasterdataset=toDir + "Winter/" + raster, 
+                                            pixel_type="1_BIT", 
+                                            nodata_value="")
+                print("\tBuilding table")
+                arcpy.management.BuildRasterAttributeTable(toDir + "Winter/" + raster,
+                                                           overwrite=True)
+                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+            except Exception as e:
+                print(e)
+                __Log(raster + "," + fromDir + raster + ",Winter," + date + "," + e)
+                
+        # Any season
+        if "Any" in seasons or "any" in seasons or "a" in seasons or "A" in seasons:
+            print("\tAny")
+            try:
+                rangewide = arcpy.Raster(fromDir + raster)
+                print("\tReclassifying")            
+                Any = arcpy.sa.Con(rangewide, 1, where_clause="VALUE > 0")
+                print("\tAdding 0's")                 
+                any_0 = arcpy.sa.Con(arcpy.sa.IsNull(Any), 0, Any)
+                print("\tAdding count pixels")                     
+                any_cnt = any_0 + conusRaster
+                print("\tSaving")            
+                arcpy.management.CopyRaster(in_raster=any_cnt, 
+                                            out_rasterdataset=toDir + "Any/" + raster, 
+                                            pixel_type="1_BIT", 
+                                            nodata_value="")
+                print("\tBuilding table")
+                arcpy.management.BuildRasterAttributeTable(toDir + "Any/" + raster,
+                                                           overwrite=True)
+                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+            except Exception as e:
+                print(e)
+                __Log(raster + "," + fromDir + raster + ",Any," + date + "," + e)
+        
+        end = datetime.datetime.now()
+        runtime = end - start1
+        print("\tTotal runtime: " + str(runtime))
+
+
 def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=3,
                  minimum=3):
     '''
