@@ -4,7 +4,7 @@ A module of functions related to managing the data needed for analyses.
 
 
 """
-def MakeSeasonalBinary(rasters, seasons, fromDir, toDir, conusRaster):
+def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
     '''
     (list, list, string, string, raster) -> saved rasters
     
@@ -17,18 +17,18 @@ def MakeSeasonalBinary(rasters, seasons, fromDir, toDir, conusRaster):
     Arguments:
     rasters -- A list of rasters to copy.
     seasons -- A list of seasons create rasters for.
-    fromDir -- Directory to copy rasters from.
-    toDir -- Directory to create seasonal subdirectories into and save to.
-    conusRaster -- A full continental extent raster (30m, albers), composed entirely of
+    from_dir -- Directory to copy rasters from.
+    to_dir -- Directory to create seasonal subdirectories into and save to.
+    CONUS_extent -- A full continental extent raster (30m, albers), composed entirely of
         zeros and counter pixels with value "1" in the top left corner if desired.  This
         layer is used for setting the extent, snapgrid, and adding the counter pixels.
     
     Examples:
     >>> gapanalysis.data.MakeSeasonalBinary(rasters=arcpy.ListRasters(),
                                             seasons=["any", "Summer", "w"],
-                                            fromDir="C:/data/maps/"
-                                            toDir="C:/data/Seasonal/",
-                                            conusRaster="C:/data/conus_ext_cnt")
+                                            from_dir="C:/data/maps/"
+                                            to_dir="C:/data/Seasonal/",
+                                            CONUS_extent="C:/data/conus_ext_cnt")
     >>>
     '''
     ################################################### import packages, set environments
@@ -37,22 +37,22 @@ def MakeSeasonalBinary(rasters, seasons, fromDir, toDir, conusRaster):
     arcpy.ResetEnvironments()
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput=True
-    arcpy.env.snapRaster = conusRaster
+    arcpy.env.snapRaster = CONUS_extent
     arcpy.env.pyramid = 'PYRAMIDS'
     arcpy.env.rasterStatistics = "STATISTICS"
     arcpy.env.cellSize = 30
-    arcpy.env.scratchworkspace = toDir
-    arcpy.env.extent = conusRaster
+    arcpy.env.scratchworkspace = to_dir
+    arcpy.env.extent = CONUS_extent
     
     ################################################### create directories for the output
     #####################################################################################
-    summerDir = os.path.join(toDir, 'Summer') 
-    winterDir = os.path.join(toDir,'Winter')
-    anyDir = os.path.join(toDir, 'Any')
+    summerDir = os.path.join(to_dir, 'Summer') 
+    winterDir = os.path.join(to_dir,'Winter')
+    anyDir = os.path.join(to_dir, 'Any')
     for x in [summerDir, winterDir, anyDir]:
         if not os.path.exists(x):
             os.makedirs(x)
-    log = toDir + "log.txt"
+    log = to_dir + "log.txt"
     logg = open(log, "a")
     logg.close()
     
@@ -69,79 +69,78 @@ def MakeSeasonalBinary(rasters, seasons, fromDir, toDir, conusRaster):
         start1 = datetime.datetime.now()
         date = start1.strftime('%Y,%m,%d')
         print(raster)
+        print("\t" + str(rasters.index(raster) + " of " + str(len(rasters))))
+        rangewide = arcpy.Raster(from_dir + raster)
         ############################################### expand, fill with zeros, and copy
         #################################################################################
         # Summer
         if "Summer" in seasons or "s" in seasons or "S" in seasons or "summer" in seasons:
             print("\tSummer")
             try:
-                rangewide = arcpy.Raster(fromDir + raster)
                 print("\tReclassifying")
                 summer = arcpy.sa.Con(rangewide, 1, where_clause="VALUE = 1 OR VALUE = 3")
                 print("\tAdding 0's")            
                 summer_0 = arcpy.sa.Con(arcpy.sa.IsNull(summer), 0, summer)
                 print("\tAdding count pixels")            
-                summer_cnt = summer_0 + conusRaster
+                summer_cnt = summer_0 + CONUS_extent
                 print("\tSaving")            
                 arcpy.management.CopyRaster(in_raster=summer_cnt, 
-                                            out_rasterdataset=toDir + "Summer/" + raster, 
+                                            out_rasterdataset=to_dir + "Summer/" + raster, 
                                             pixel_type="1_BIT", 
                                             nodata_value="")
                 print("\tBuilding table")
-                arcpy.management.BuildRasterAttributeTable(toDir + "Summer/" + raster,
+                arcpy.management.BuildRasterAttributeTable(to_dir + "Summer/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+                __Log(raster + "," + from_dir + raster + ",Summer," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + fromDir + raster + ",Summer," + date + "," + e)
+                __Log(raster + "," + from_dir + raster + ",Summer," + date + "," + e)
                                                            
         # Winter
         if "Winter" in seasons or "winter" in seasons or "W" in seasons or "w" in seasons:
             print("\tWinter")
             try:
-                rangewide = arcpy.Raster(fromDir + raster)
                 print("\tReclassifying")
                 winter = arcpy.sa.Con(rangewide, 1, where_clause="VALUE = 2 OR VALUE = 3")
                 print("\tAdding 0's")                 
                 winter_0 = arcpy.sa.Con(arcpy.sa.IsNull(winter), 0, winter)
                 print("\tAdding count pixels")                     
-                winter_cnt = winter_0 + conusRaster
+                winter_cnt = winter_0 + CONUS_extent
                 print("\tSaving")            
                 arcpy.management.CopyRaster(in_raster=winter_cnt, 
-                                            out_rasterdataset=toDir + "Winter/" + raster, 
+                                            out_rasterdataset=to_dir + "Winter/" + raster, 
                                             pixel_type="1_BIT", 
                                             nodata_value="")
                 print("\tBuilding table")
-                arcpy.management.BuildRasterAttributeTable(toDir + "Winter/" + raster,
+                arcpy.management.BuildRasterAttributeTable(to_dir + "Winter/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+                __Log(raster + "," + from_dir + raster + ",Summer," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + fromDir + raster + ",Winter," + date + "," + e)
+                __Log(raster + "," + from_dir + raster + ",Winter," + date + "," + e)
                 
         # Any season
         if "Any" in seasons or "any" in seasons or "a" in seasons or "A" in seasons:
             print("\tAny")
             try:
-                rangewide = arcpy.Raster(fromDir + raster)
                 print("\tReclassifying")            
                 Any = arcpy.sa.Con(rangewide, 1, where_clause="VALUE > 0")
                 print("\tAdding 0's")                 
                 any_0 = arcpy.sa.Con(arcpy.sa.IsNull(Any), 0, Any)
                 print("\tAdding count pixels")                     
-                any_cnt = any_0 + conusRaster
+                any_cnt = any_0 + CONUS_extent
                 print("\tSaving")            
                 arcpy.management.CopyRaster(in_raster=any_cnt, 
-                                            out_rasterdataset=toDir + "Any/" + raster, 
+                                            out_rasterdataset=to_dir + "Any/" + raster, 
                                             pixel_type="1_BIT", 
                                             nodata_value="")
                 print("\tBuilding table")
-                arcpy.management.BuildRasterAttributeTable(toDir + "Any/" + raster,
+                arcpy.management.BuildRasterAttributeTable(to_dir + "Any/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + fromDir + raster + ",Summer," + date)
+                __Log(raster + "," + from_dir + raster + ",Summer," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + fromDir + raster + ",Any," + date + "," + e)
+                __Log(raster + "," + from_dir + raster + ",Any," + date + "," + e)
         
         end = datetime.datetime.now()
         runtime = end - start1
@@ -267,7 +266,7 @@ def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=
             "NoRows":noRows, "Zeros":zero}
 
 
-def Expand_0s(rasters, CONUS_extent, from_dir, to_dir, snap_raster):
+def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
     '''
     (list, string, string, string, string) -> saved raster
     
@@ -280,15 +279,13 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir, snap_raster):
     Arguments:
     rasters -- A list of rasters to check.
     CONUS_extent -- A raster with a national extent and zeros everywhere except for 
-        counter cells.
+        counter cells.  Also used as a snap raster.
     from_dir -- Where to find the habitat maps to process.
     to_dir -- Directory to work in and save output.
-    snap_raster -- Location of snap raster to use.
 
     Examples:
     >>> gapanalysis.data.Expand_0s(rasters=arcpy.ListRasters(), 
                                    CONUS_extent="C:/gapanalysis/data/CONUS_extent",
-                                   snap_raster="C:/gapanalysis/data/snap_raster", 
                                    from_dir="C:/models/"
                                    to_dir="C:/models/Expanded_0s")
     >>>
@@ -296,7 +293,7 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir, snap_raster):
     import arcpy, datetime
     arcpy.CheckOutExtension("Spatial")
     arcpy.overwriteOutput=True
-    arcpy.env.snapRaster = snap_raster
+    arcpy.env.snapRaster = CONUS_extent
     arcpy.env.extent = CONUS_extent
     arcpy.env.workspace = to_dir
     
