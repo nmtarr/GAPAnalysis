@@ -12,7 +12,8 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
         and with an extent defined by the species range to a full CONUS extent version
         with zero's and 1's throughout. A raster is saved for each season in "Summer", 
         "Winter", or "Any" directory.  Also adds 9 pixels to the upper left corner of 
-        the map if the conus raster has them.
+        the map if the conus raster has them.  Runtime for 1 species creating each season
+        is around 2 hours.  Consider 
         
     Arguments:
     rasters -- A list of rasters to copy.
@@ -69,7 +70,7 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
         start1 = datetime.datetime.now()
         date = start1.strftime('%Y,%m,%d')
         print(raster)
-        print("\t" + str(rasters.index(raster) + " of " + str(len(rasters))))
+        print(str(rasters.index(raster) + 1) + " of " + str(len(rasters)))
         rangewide = arcpy.Raster(from_dir + raster)
         ############################################### expand, fill with zeros, and copy
         #################################################################################
@@ -300,23 +301,22 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
     for sp in rasters:
         start1 = datetime.datetime.now()
         print(sp)
-        Tiff = from_dir + sp
+        Tiff = arcpy.Raster(from_dir + sp)
         newTiff = to_dir + sp
-        print("Copying")
         try:
-            arcpy.management.CopyRaster(Tiff, newTiff,)
-            print("Summing")
-            newRast = arcpy.sa.CellStatistics([newTiff, CONUS_extent], "SUM", "DATA")
-            print("Setting nodata value to 255")
-            arcpy.management.SetRasterProperties(newRast, nodata="1 255")
-            print("Saving")
-            newRast.save(newTiff)
-            print("Calculating statistics")
+            print("\tCon is Null")
+            ConNull = arcpy.sa.Con(arcpy.sa.IsNull(Tiff), 0, Tiff)
+            print("\tSumming")
+            newRast = ConNull + CONUS_extent
+            print("\tSaving")
+            arcpy.management.CopyRaster(newRast, newTiff, pixel_type="2_BIT", 
+                                        nodata_value="")
+            print("\tCalculating statistics")
             arcpy.management.CalculateStatistics(newTiff)
-            print("Building RAT")
+            print("\tBuilding RAT")
             arcpy.management.BuildRasterAttributeTable(newTiff, overwrite=True)
             end = datetime.datetime.now()
             runtime = end - start1
-            print("Total runtime: " + str(runtime))
+            print("\tTotal runtime: " + str(runtime))
         except Exception as e:
             print('ERROR expanding raster - {0}'.format(e))
