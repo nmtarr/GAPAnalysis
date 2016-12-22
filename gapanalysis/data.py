@@ -44,6 +44,7 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
     arcpy.env.cellSize = 30
     arcpy.env.scratchworkspace = to_dir
     arcpy.env.extent = CONUS_extent
+    arcpy.env.workspace = to_dir
     
     ################################################### create directories for the output
     #####################################################################################
