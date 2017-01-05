@@ -116,7 +116,7 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
                 print("\tBuilding table")
                 arcpy.management.BuildRasterAttributeTable(to_dir + "Winter/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + from_dir + raster + ",Summer," + date)
+                __Log(raster + "," + from_dir + raster + ",Winter," + date)
             except Exception as e:
                 print(e)
                 __Log(raster + "," + from_dir + raster + ",Winter," + date + "," + e)
@@ -139,7 +139,7 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
                 print("\tBuilding table")
                 arcpy.management.BuildRasterAttributeTable(to_dir + "Any/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + from_dir + raster + ",Summer," + date)
+                __Log(raster + "," + from_dir + raster + ",Any," + date)
             except Exception as e:
                 print(e)
                 __Log(raster + "," + from_dir + raster + ",Any," + date + "," + e)
