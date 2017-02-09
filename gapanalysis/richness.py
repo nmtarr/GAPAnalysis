@@ -142,9 +142,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
 
     return tally, outTable
 
-
-
-
+"""
 def ProcessRichness_OLD(spp, groupName, outLoc, modelDir, season, interval_size, CONUS_extent, 
                     expand=False):    
     '''
@@ -513,3 +511,4 @@ def ProcessRichness_OLD(spp, groupName, outLoc, modelDir, season, interval_size,
     __Log("Total runtime was: " + str(runtime))
 
     return outRast, outTable
+"""
