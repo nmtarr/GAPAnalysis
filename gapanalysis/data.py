@@ -273,7 +273,8 @@ def CheckHabMaps(rasters, nodata=0, Format="TIFF", pixel_type="U2", maximum=3,
             "NoRows":noRows, "Zeros":zero}
 
 
-def Make0123(rasters, CONUS_extent, from_dir, to_dir, log="P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt"):
+def Make0123(rasters, CONUS_extent, from_dir, to_dir, 
+             log="P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt"):
     '''
     (list, string, string, string, string, string) -> saved raster
     
