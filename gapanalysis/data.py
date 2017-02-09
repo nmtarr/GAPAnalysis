@@ -4,7 +4,7 @@ A module of functions related to managing the data needed for analyses.
 
 
 """
-def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
+def Make01Seasonal(rasters, seasons, from_dir, to_dir, log, CONUS_extent):
     '''
     (list, list, string, string, raster) -> saved rasters
     
@@ -20,6 +20,7 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
     seasons -- A list of seasons create rasters for.
     from_dir -- Directory to copy rasters from.
     to_dir -- Directory to create seasonal subdirectories into and save to.
+    log -- The log file to record progress to.
     CONUS_extent -- A full continental extent raster (30m, albers), composed entirely of
         zeros and counter pixels with value "1" in the top left corner if desired.  This
         layer is used for setting the extent, snapgrid, and adding the counter pixels.
@@ -28,8 +29,9 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
     >>> gapanalysis.data.MakeSeasonalBinary(rasters=arcpy.ListRasters(),
                                             seasons=["any", "Summer", "w"],
                                             from_dir="C:/data/maps/"
-                                            to_dir="C:/data/Seasonal/",
-                                            CONUS_extent="C:/data/conus_ext_cnt")
+                                            to_dir="C:/data/Output/",
+                                            CONUS_extent="C:/data/conus_ext_cnt",
+                                            log="P:/Proj3/USGap/Vert/Model/Output/Conus/log.txt")
     >>>
     '''
     ################################################### import packages, set environments
@@ -54,7 +56,6 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
     for x in [summerDir, winterDir, anyDir]:
         if not os.path.exists(x):
             os.makedirs(x)
-    log = to_dir + "log.txt"
     logg = open(log, "a")
     logg.close()
     
@@ -93,11 +94,12 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
                 print("\tBuilding table")
                 arcpy.management.BuildRasterAttributeTable(to_dir + "Summer/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + from_dir + raster + ",Summer," + date)
+                __Log(raster[:6] + "," + from_dir + raster + "," + summerDir + "/" + raster + "," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + from_dir + raster + ",Summer," + date + "," + e)
-                                                           
+
+                __Log(raster[:6] + "," + from_dir + raster + "," + summerDir + "/" + raster + "," + date + ",FAILED")
+                                                         
         # Winter
         if "Winter" in seasons or "winter" in seasons or "W" in seasons or "w" in seasons:
             print("\tWinter")
@@ -116,10 +118,10 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
                 print("\tBuilding table")
                 arcpy.management.BuildRasterAttributeTable(to_dir + "Winter/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + from_dir + raster + ",Winter," + date)
+                __Log(raster[:6] + "," + from_dir + raster + "," + winterDir + "/" + raster + "," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + from_dir + raster + ",Winter," + date + "," + e)
+                __Log(raster[:6] + "," + from_dir + raster + "," + winterDir + "/" + raster + "," + date + ",FAILED")
                 
         # Any season
         if "Any" in seasons or "any" in seasons or "a" in seasons or "A" in seasons:
@@ -139,18 +141,18 @@ def MakeSeasonalBinary(rasters, seasons, from_dir, to_dir, CONUS_extent):
                 print("\tBuilding table")
                 arcpy.management.BuildRasterAttributeTable(to_dir + "Any/" + raster,
                                                            overwrite=True)
-                __Log(raster + "," + from_dir + raster + ",Any," + date)
+                __Log(raster[:6] + "," + from_dir + raster + "," + anyDir + "/" + raster + "," + date)
             except Exception as e:
                 print(e)
-                __Log(raster + "," + from_dir + raster + ",Any," + date + "," + e)
+                __Log(raster[:6] + "," + from_dir + raster + "," + anyDir + "/" + raster + "," + date + ",FAILED")
         
         end = datetime.datetime.now()
         runtime = end - start1
         print("\tTotal runtime: " + str(runtime))
 
 
-def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=3,
-                 minimum=3):
+def CheckHabMaps(rasters, nodata=0, Format="TIFF", pixel_type="U2", maximum=3,
+                 minimum=3, zero=False):
     '''
     (list) -> dictionary
     
@@ -182,6 +184,8 @@ def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=
     Format -- The desired format (i.e., "TIFF" or "GRID") 
     maximum -- Allowable max value for the raster.
     minimum -- Allowable min value for the raster.
+    zero -- True or False on whether to check for the existence of 0 values in the table.
+    
 
     Examples:
     >>> BadProperties = CheckRasters(arcpy.ListRasters())
@@ -252,9 +256,10 @@ def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=
                     if value > maximum:
                         print r + " - has a value greater than {0}".format(maximum)
                         overMax.append(rasObj.name)
-                    if value == 0:
-                        print r + " - has a value equal to 0"
-                        zero.append(rasObj.name)
+                    if zero == True:
+                        if value == 0:
+                            print r + " - has a value equal to 0"
+                            zero.append(rasObj.name)
                 if RowsOK == False:
                     noRows.append(rasObj.name)
         except:
@@ -268,9 +273,9 @@ def CheckHabitatMaps(rasters, nodata=0, Format="TIFF", pixel_type="U8", maximum=
             "NoRows":noRows, "Zeros":zero}
 
 
-def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
+def Make0123(rasters, CONUS_extent, from_dir, to_dir, log="P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt"):
     '''
-    (list, string, string, string, string) -> saved raster
+    (list, string, string, string, string, string) -> saved raster
     
     Copies a GAP habitat map that is in the format of values 1-3 and nodata (no zeros) 
         and with an extent defined by the species range to a full CONUS extent version
@@ -283,13 +288,16 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
     CONUS_extent -- A raster with a national extent and zeros everywhere except for 
         counter cells.  Also used as a snap raster.
     from_dir -- Where to find the habitat maps to process.
-    to_dir -- Directory to work in and save output.
+    to_dir -- Directory to work in and save output.  It should have a subdirectory named
+        "0123".
+    log -- Path to the log file used to keep track of habmap movement and creation.
 
     Examples:
     >>> gapanalysis.data.Expand_0s(rasters=arcpy.ListRasters(), 
                                    CONUS_extent="C:/gapanalysis/data/CONUS_extent",
-                                   from_dir="C:/models/"
-                                   to_dir="C:/models/Expanded_0s")
+                                   from_dir="C:/models/",
+                                   to_dir="C:/models/Output/",
+                                   log = "P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt")
     >>>
     '''
     import arcpy, datetime
@@ -299,11 +307,23 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
     arcpy.env.extent = CONUS_extent
     arcpy.env.workspace = to_dir
     
+    
+    ######################################### Function to write data to the log file
+    ################################################################################
+    log = log
+    def __Log(content):
+        print content
+        with open(log, 'a') as logDoc:
+            logDoc.write(content + '\n')
+            
+    ######################################### Expand each raster to Conus and add 0s
+    ################################################################################
     for sp in rasters:
         start1 = datetime.datetime.now()
+        date = start1.strftime('%Y,%m,%d')
         print(sp)
         Tiff = arcpy.Raster(from_dir + sp)
-        newTiff = to_dir + sp
+        newTiff = to_dir + "0123/" + sp
         try:
             print("\tCon is Null")
             ConNull = arcpy.sa.Con(arcpy.sa.IsNull(Tiff), 0, Tiff)
@@ -319,5 +339,7 @@ def Expand_0s(rasters, CONUS_extent, from_dir, to_dir):
             end = datetime.datetime.now()
             runtime = end - start1
             print("\tTotal runtime: " + str(runtime))
+            __Log(sp[:6] + "," + from_dir + sp + "," + newTiff + "," + date)
         except Exception as e:
             print('ERROR expanding raster - {0}'.format(e))
+            __Log(sp[:6] + "," + from_dir + sp + "," + newTiff + "," + date + ",Failed")
