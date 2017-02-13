@@ -5,11 +5,10 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
 
     Creates a species richness raster for the passed species. Also includes a
       table listing all the included species. Intermediate richness rasters are
-      retained. That is, the code processes the rasters in groups of the given interval
-      size, to keep from overloading ArcPy's cell statistics function; the intermediate
-      richness rasters are retained for spot-checking and for potential re-running of 
-      species subsets. Refer to the output log file for a list of species included in 
-      each intermediate raster as well as the code that was run for the process.
+      retained. That is, the code sums the rasters but saves the running total at interval
+      size; the intermediate richness rasters are retained for spot-checking. Refer to the 
+      output log file for a list of species included in each intermediate raster as well 
+      as the code that was run for the process.
 
     Returns the path to the output richness raster and the path to the species
       table.
@@ -66,7 +65,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
     for x in [intDir, outDir]:
         if not os.path.exists(x):
             os.makedirs(x)
-    log = outDir+"/Log{0}.txt".format(groupName)
+    log = outDir+"/Log_{0}.txt".format(groupName)
     if not os.path.exists(log):
         logObj = open(log, "wb")
         logObj.close()

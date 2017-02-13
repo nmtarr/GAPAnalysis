@@ -30,7 +30,7 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcDir, lcVersion, log)
     ####################################################################################  
     LCLoc = lcDir + "/"
     arcpy.env.overwriteOutput = True
-    starttime = datetime.datetime.now()   
+    starttime = datetime.datetime.now()  
         
     ######### Get list of regional land covers to reclassify, reset workspace to workdir
     ####################################################################################

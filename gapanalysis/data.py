@@ -4,7 +4,8 @@ A module of functions related to managing the data needed for analyses.
 
 
 """
-def Make01Seasonal(rasters, seasons, from_dir, to_dir, log, CONUS_extent):
+def Make01Seasonal(rasters, seasons, from_dir, to_dir, log="P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt", 
+                   CONUS_extent):
     '''
     (list, list, string, string, raster) -> saved rasters
     
