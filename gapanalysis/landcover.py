@@ -80,35 +80,29 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcPath, lcVersion, log
     __Log("\tReclassifying {0}".format(lcPath))
     lcObj = arcpy.sa.Raster(lcPath)
     try:
-        RegReclass = arcpy.sa.Reclassify(lcObj, "VALUE", remap, "NODATA")
-        RegReclass.save("T:/temp/Feb13Test0.tif")
+        lcReclassObj = arcpy.sa.Reclassify(lcObj, "VALUE", remap, "NODATA")
     except Exception as e:
         __Log("ERROR reclassifying land cover")
-      
-    ################################################################ Set null's to zero
-    ####################################################################################
-    try:
-        print("\tCon is Null")
-        ConNull = arcpy.sa.Con(arcpy.sa.IsNull(RegReclass), 0, RegReclass)
-        print("\tSaving")
-        newTiff = workDir + keyword + ".tif"
-        arcpy.management.CopyRaster(ConNull, newTiff)
-    except Exception as e:
-        __Log("ERROR filling in zeros")
     
     ############################## Build a RAT, pyramid, and statistics; set nodata to 0
     ####################################################################################                                   
     try:
-        newTif = arcpy.Raster(newTiff)
-        """
         __Log("Attempting to calculate statistics")
-        arcpy.management.CalculateStatistics(newTif)
-        """
+        arcpy.management.CalculateStatistics(lcReclassObj, skip_existing=False)
         __Log("Building a new RAT")
-        arcpy.management.BuildRasterAttributeTable(newTif, overwrite=False)
+        arcpy.management.BuildRasterAttributeTable(lcReclassObj, overwrite=True)
     except Exception as e:
         __Log("ERROR building RAT, pyramids, or statistics - {0}".format(e))
-     
+    
+    ######################################################################## Save result
+    ####################################################################################
+    resultTiff = workDir + keyword + ".tif"
+    try:
+        print("\tSaving")
+        arcpy.management.CopyRaster(lcReclassObj, resultTiff)
+    except Exception as e:
+        __Log("ERROR saving reclassed land cover")
+        
     ########################################################### Write closer to log file
     ####################################################################################
     endtime = datetime.datetime.now()
