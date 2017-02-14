@@ -168,13 +168,13 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         __Log("Copying habitat map to 32 bit, temp version")
         try:
             arcpy.management.CopyRaster(speciesDir + sp, scratch + sp, nodata_value=0, 
-                                       pixel_type="32_BIT_UNSIGNED")
+                                       pixel_type="2_BIT")
             __Log("Building raster object")
             spMap = arcpy.Raster(scratch + sp)
             RasterReport(spMap)
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
-        try:    
+        try:
             __Log("Summing zone and species map")
             Sum = arcpy.sa.CellStatistics([spMap, zone_file * 10], "SUM", "DATA")
         except Exception as e:
