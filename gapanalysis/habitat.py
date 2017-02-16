@@ -3,8 +3,7 @@ Created Oct 31, 2016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
-            snap_raster):
+def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, snap):
     '''
     (string, string, string, list, string, string) -> pandas dataframe
     
@@ -19,10 +18,10 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
         process is run, new species are added to the existing table and existing entries
         are updated.  The result table contains a field for date run and runtime for 
         each species.  The table with all species that have been run is returned as a 
-        pandas dataframe.  NOTE: the extent of analyses is set to that of the zone_file.
+        pandas dataframe.  NOTE: the extent of analyses is set to that of the zoneFile.
     
     Arguments:
-    zone_file -- A raster layer of the continental U.S. with zones of interest assigned
+    zoneFile -- A raster layer of the continental U.S. with zones of interest assigned
         a unique value/code.  Must have following properties:
                 a) areas of interest have numeric, zon-zero, integer codes. If 0's exist
                     reclass them to 99999 or something recognizable first.
@@ -31,23 +30,23 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
                 d) 1 band
                 e) GeoTiff format
                 f) valid raster attribute table 
-    zone_name -- A short name to use in file naming (e.g., "Pine")
-    zone_field -- The field in in the zone_file to use in the process.  It must be
+    zoneName -- A short name to use in file naming (e.g., "Pine")
+    zoneField -- The field in in the zoneFile to use in the process.  It must be
         an integer with unique values for each zone you are interested in. NOTE: Zero
         is not a valid value!!!
-    habitat_maps -- Python list of GAP habitat maps to analyze. Needs to be a list of 
+    habmapList -- Python list of GAP habitat maps to analyze. Needs to be a list of 
         geotiffs named like: "mSEWEx.tif".  
-    speciesDir -- The directory containing the GAP habitat maps to use in the process.
+    habDir -- The directory containing the GAP habitat maps to use in the process.
     workDir -- The name of a directory to save all results, including subfolders, log file
         temp output, and final csv files.  This code builds several subfolders and files.
-    snap_raster -- A 30x30m cell raster to use as a snap grid during processing.
+    snap -- A 30x30m cell raster to use as a snap grid during processing.
     
     Example:
-    >>>ProportionPineDF = ga.representation.Calculate(zone_file = "C:/data/Pine.tif",
-                                                      zone_name = "Pine",
-                                                      zone_field = "VALUE",
-                                                      habitat_maps = ["mSEWEx.tif", "bAMROx.tif"]
-                                                      speciesDir = "C:/data/speciesmaps/",
+    >>>ProportionPineDF = ga.representation.Calculate(zoneFile = "C:/data/Pine.tif",
+                                                      zoneName = "Pine",
+                                                      zoneField = "VALUE",
+                                                      habmapList = ["mSEWEx.tif", "bAMROx.tif"]
+                                                      habDir = "C:/data/speciesmaps/",
                                                       workDir = "C:/analyses/represenation/pine")
     '''
     ############################################################## Imports and settings
@@ -55,8 +54,8 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
     import arcpy, pandas as pd, os
     from datetime import datetime
     arcpy.CheckOutExtension("Spatial")
-    arcpy.env.extent = arcpy.Raster(zone_file).extent
-    arcpy.env.snapRaster = snap_raster
+    arcpy.env.extent = arcpy.Raster(zoneFile).extent
+    arcpy.env.snapRaster = snap
     arcpy.env.scratchWorkspace = workDir
     arcpy.env.cellSize = 30
     arcpy.env.overwriteOutput = True
@@ -88,7 +87,7 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
     starttime0 = datetime.now()
     timestamp = starttime0.strftime('%Y-%m-%d')
     __Log("\n\n\n****************  " + timestamp + "  **************************\n")
-    __Log("\nRasters that were processed: " + str(habitat_maps) + "\n")
+    __Log("\nRasters that were processed: " + str(habmapList) + "\n")
     __Log("Checked for and built required directories, lists, & dataframes")
     
     ############################################### Function to check raster properties
@@ -135,23 +134,23 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
     ###################################### Inspect the zone raster to make sure it's OK
     ###################################################################################
     __Log("Checking zone raster properties")
-    zone_file = arcpy.Raster(zone_file)
-    RasterReport(zone_file)
+    zoneFile = arcpy.Raster(zoneFile)
+    RasterReport(zoneFile)
     
     ######################################## Get list of unique values from zone raster
     ###################################################################################
-    zoneCursor = arcpy.SearchCursor(zone_file)
+    zoneCursor = arcpy.SearchCursor(zoneFile)
     zoneValues = []
     for z in zoneCursor:
-        zoneValues.append(z.getValue(zone_field))
+        zoneValues.append(z.getValue(zoneField))
     
     ################################################################# Some housekeeping
     ###################################################################################
     ### Build empty dataframe with hierarchical indexing
     colList = ValueMap.values() + ["Date", "RunTime"]
-    indexSpecies = habitat_maps * len(zoneValues)
+    indexSpecies = habmapList * len(zoneValues)
     indexSpecies.sort()
-    indexList = [indexSpecies, zoneValues * len(habitat_maps)]
+    indexList = [indexSpecies, zoneValues * len(habmapList)]
     df1 = pd.DataFrame(index=indexList, columns=colList).fillna(value=0)
     df1.index.names = ["GeoTiff", "Zone"]
     
@@ -160,24 +159,24 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
     
     ################################ Loop through rasters, sum species and zone rasters
     ###################################################################################
-    for sp in habitat_maps:
+    for sp in habmapList:
         __Log("\n-------" + sp + "-------")
         starttime = datetime.now()
         timestamp = starttime.strftime('%Y-%m-%d-%M')
         __Log("Copying habitat map to temp version")
         try:
             __Log("Building raster object")
-            spMap = arcpy.Raster(speciesDir + sp)
+            spMap = arcpy.Raster(habDir + sp)
             RasterReport(spMap)
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         try:    
             __Log("Summing zone and species map")
-            Sum = arcpy.sa.CellStatistics([spMap, zone_file * 10], "SUM", "DATA")
+            Sum = arcpy.sa.CellStatistics([spMap, zoneFile * 10], "SUM", "DATA")
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         try:
-            __Log("Saving and checking summed raster")
+            __Log("Stats, RAT, and checking summed raster")
             arcpy.management.CalculateStatistics(Sum)
             arcpy.management.BuildRasterAttributeTable(Sum, overwrite=True)
             RasterReport(arcpy.Raster(Sum))
@@ -283,13 +282,13 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
     
     ######################################################### Update and save csv files
     ###################################################################################
-    df3FileName = workDir + "/archive/" + zone_name + "_" + \
+    df3FileName = workDir + "/archive/" + zoneName + "_" + \
                     starttime.strftime('%Y-%m-%d-%H-%M') + ".csv"
     __Log("Saving new species table to " + df3FileName)
     df3.to_csv(df3FileName, index_col=["GeoTiff", "Zone"])
     
     # Load the master result table
-    masterFileName = workDir + "/Percent_in_" + zone_name + "_Master.csv"
+    masterFileName = workDir + "/Percent_in_" + zoneName + "_Master.csv"
     if os.path.exists(masterFileName):
         dfMas = pd.read_csv(masterFileName, index_col=["GeoTiff", "Zone"])
         __Log("Loaded " + masterFileName)
@@ -297,9 +296,9 @@ def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir,
         dfMas = df3
     
     # Save an archive copy of master table/dataframe
-    dfMas.to_csv(workDir + "/archive/" + zone_name + "_Master_" + \
+    dfMas.to_csv(workDir + "/archive/" + zoneName + "_Master_" + \
                 starttime.strftime('%Y-%m-%d-%H-%M') + ".csv", )
-    __Log("Creating " + workDir + "/archive/" + zone_name + "_Master_" + \
+    __Log("Creating " + workDir + "/archive/" + zoneName + "_Master_" + \
             starttime.strftime('%Y-%m-%d-%H-%M') + ".csv")
     
     __Log("Updating master table with new calculations")

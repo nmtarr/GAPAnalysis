@@ -1,5 +1,4 @@
-def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size, 
-                    CONUS_extent):    
+def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, CONUSExtent):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -24,17 +23,17 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
     season -- Seasonal criteris for reclassifying the output.  Choose "Summer", "Winter", 
         or "Any". "Any" will reclassify output so that any value > 0 gets reclassed to 
         "1" and is the default. 
-    interval_size -- This number specifies how often to save the running tally as grids
+    intervalSize -- This number specifies how often to save the running tally as grids
         are added to it one-by-one.  For example, selecting 20 will mean that the tally 
         will be saved every time the number of maps summed is a multiple of 20.
-    CONUS_extent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
+    CONUSExtent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
                         outLoc='C:/GIS_Data/Richness', modelDir='C:/Data/Model/Output',
-                        season="Summer", interval_size=20, 
+                        season="Summer", intervalSize=20, 
                         log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
     C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, C:\GIS_Data\Richness\MyRandomSpecies.csv
     '''    
@@ -44,14 +43,14 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
     arcpy.ResetEnvironments()
     arcpy.env.overwriteOutput=True
     arcpy.env.pyramid = 'NONE'
-    arcpy.env.snapRaster = CONUS_extent
+    arcpy.env.snapRaster = CONUSExtent
     arcpy.env.rasterStatistics = "STATISTICS"
     arcpy.env.cellSize = 30
-    arcpy.env.extent = CONUS_extent
+    arcpy.env.extent = CONUSExtent
     starttime = datetime.datetime.now()      
     
     # Maximum number of species to process at once
-    interval = interval_size
+    interval = intervalSize
     # Count the number of species in the species list
     sppLength = len(spp)
     # The seasonal input directory
@@ -99,7 +98,7 @@ def ProcessRichness(spp, groupName, outLoc, modelDir, season, interval_size,
     
     #################################### Sum rasters, saving the tally periodically
     ###############################################################################    
-    tally = arcpy.Raster(CONUS_extent)
+    tally = arcpy.Raster(CONUSExtent)
     counter = 1
     __Log("Summing")
     for sp in spp:
