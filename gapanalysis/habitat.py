@@ -3,8 +3,8 @@ Created Oct 31, 2016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
-                            snap_raster):
+def Overlay(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDir, 
+            snap_raster):
     '''
     (string, string, string, list, string, string) -> pandas dataframe
     
@@ -24,14 +24,13 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
     Arguments:
     zone_file -- A raster layer of the continental U.S. with zones of interest assigned
         a unique value/code.  Must have following properties:
-                a) areas of interest have numeric, zon-zero, integer codes.  If 0's exist
+                a) areas of interest have numeric, zon-zero, integer codes. If 0's exist
                     reclass them to 99999 or something recognizable first.
-                b) 32 bit integer pixel type
-                c) 30m x 30m
-                d) Albers NAD83 projection
-                e) 1 band
-                f) GeoTiff format
-                g) valid raster attribute table 
+                b) 30m x 30m
+                c) Albers NAD83 projection
+                d) 1 band
+                e) GeoTiff format
+                f) valid raster attribute table 
     zone_name -- A short name to use in file naming (e.g., "Pine")
     zone_field -- The field in in the zone_file to use in the process.  It must be
         an integer with unique values for each zone you are interested in. NOTE: Zero
@@ -165,12 +164,10 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
         __Log("\n-------" + sp + "-------")
         starttime = datetime.now()
         timestamp = starttime.strftime('%Y-%m-%d-%M')
-        __Log("Copying habitat map to 32 bit, temp version")
+        __Log("Copying habitat map to temp version")
         try:
-            arcpy.management.CopyRaster(speciesDir + sp, scratch + sp, nodata_value=0, 
-                                       pixel_type="32_BIT_UNSIGNED")
             __Log("Building raster object")
-            spMap = arcpy.Raster(scratch + sp)
+            spMap = arcpy.Raster(speciesDir + sp)
             RasterReport(spMap)
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
@@ -181,11 +178,16 @@ def Calculate(zone_file, zone_name, zone_field, habitat_maps, speciesDir, workDi
             __Log("ERROR -- {0}".format(e))
         try:
             __Log("Saving and checking summed raster")
+            arcpy.management.CalculateStatistics(Sum)
+            arcpy.management.BuildRasterAttributeTable(Sum, overwrite=True)
+            RasterReport(arcpy.Raster(Sum))
+            '''
             Sum.save(scratch + "tmpSum.tif")
             arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
             arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", 
                                                         overwrite=True)
             RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
+            '''
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
