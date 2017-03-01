@@ -2,7 +2,7 @@
 A collecton of funcions for common tasks related to land cover data.
 '''
           
-def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcPath, lcVersion, log):
+def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcPath, lcVersion):
     '''
     (list, string, string, string, string, string, string) -> raster object, saved map.
     
@@ -17,7 +17,6 @@ def ReclassLandCover(MUlist, reclassTo, keyword, workDir, lcPath, lcVersion, log
     lcPath -- Path to the national extent land cover mosaic suitable for overlay analyses
         with the models.
     lcVersion -- The version of GAP Land Cover to be reclassified.
-    log -- Path and name of log file to save print statements, errors, and code to.
     '''
     #################################################### Things to import and check out
     ###################################################################################    

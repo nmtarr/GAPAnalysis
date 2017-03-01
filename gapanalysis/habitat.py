@@ -24,7 +24,7 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     zoneFile -- A raster layer of the continental U.S. with zones of interest assigned
         a unique value/code.  Must have following properties:
                 a) areas of interest have numeric, zon-zero, integer codes. If 0's exist
-                    reclass them to 99999 or something recognizable first.
+                   reclass them to 99999 or something recognizable first.
                 b) 30m x 30m
                 c) Albers NAD83 projection
                 d) 1 band
@@ -56,12 +56,11 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.extent = arcpy.Raster(zoneFile).extent
     arcpy.env.snapRaster = snap
-    arcpy.env.scratchWorkspace = workDir
     arcpy.env.cellSize = 30
     arcpy.env.overwriteOutput = True
     arcpy.env.rasterStatistics = "STATISTICS"
     pd.set_option('display.width', 1000)
-    
+        
     ################################ Create the working directories if they don't exist
     ###################################################################################
     # Create working directory
@@ -153,12 +152,11 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     indexList = [indexSpecies, zoneValues * len(habmapList)]
     df1 = pd.DataFrame(index=indexList, columns=colList).fillna(value=0)
     df1.index.names = ["GeoTiff", "Zone"]
-    
-    # Get out of the output folder
-    arcpy.env.workspace = scratch
-    
+        
     ################################ Loop through rasters, sum species and zone rasters
     ###################################################################################
+    arcpy.env.scratchworkspace = scratch
+    arcpy.env.workspace = scratch
     for sp in habmapList:
         __Log("\n-------" + sp + "-------")
         starttime = datetime.now()
@@ -177,16 +175,11 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
             __Log("ERROR -- {0}".format(e))
         try:
             __Log("Stats, RAT, and checking summed raster")
-            arcpy.management.CalculateStatistics(Sum)
-            arcpy.management.BuildRasterAttributeTable(Sum, overwrite=True)
-            RasterReport(arcpy.Raster(Sum))
-            '''
             Sum.save(scratch + "tmpSum.tif")
             arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
             arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", 
                                                         overwrite=True)
             RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
-            '''
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
