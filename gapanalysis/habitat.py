@@ -4,7 +4,7 @@ Functions related to calculating the amount of species' habitat that falls withi
 of interest.
 """
 def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, snap,
-                   extent="zoneFile"):
+                   extent="habMap"):
     '''
     (string, string, string, list, string, string, string, string) -> pandas dataframe
     
@@ -93,7 +93,7 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     starttime0 = datetime.now()
     timestamp = starttime0.strftime('%Y-%m-%d')
     __Log("\n\n\n****************  " + timestamp + "  **************************\n")
-    __Log("\nRasters that were processed: " + str(habmapList) + "\n")
+    __Log("\nRasters that will be processed: " + str(habmapList) + "\n")
     __Log("Checked for and built required directories, lists, & dataframes")
     
     ############################################### Function to check raster properties
