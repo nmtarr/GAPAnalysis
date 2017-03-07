@@ -3,9 +3,10 @@ Created Oct 31, 2016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, snap):
+def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, snap,
+                   extent="zoneFile"):
     '''
-    (string, string, string, list, string, string) -> pandas dataframe
+    (string, string, string, list, string, string, string, string) -> pandas dataframe
     
     This function calculates the number of habitat pixels and proportion of each species'
         summer, winter, and year-round habitat that occurs in each "zone" of a raster. 
@@ -40,6 +41,10 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     workDir -- The name of a directory to save all results, including subfolders, log file
         temp output, and final csv files.  This code builds several subfolders and files.
     snap -- A 30x30m cell raster to use as a snap grid during processing.
+    extent -- Choose "habMap" or "zoneFile".  habMap will process each species overlay
+        with an extent matching that species' habitat's extent.  zoneFile will do analyses
+        at the extent of the zoneFile, which is usually CONUS and therefore takes much 
+        longer.
     
     Example:
     >>>ProportionPineDF = ga.representation.Calculate(zoneFile = "C:/data/Pine.tif",
@@ -47,7 +52,9 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
                                                       zoneField = "VALUE",
                                                       habmapList = ["mSEWEx.tif", "bAMROx.tif"]
                                                       habDir = "C:/data/speciesmaps/",
-                                                      workDir = "C:/analyses/represenation/pine")
+                                                      workDir = "C:/analyses/represenation/pine",
+                                                      snap = "C:/data/snapgrid",
+                                                      extent = "habMap")
     '''
     ############################################################## Imports and settings
     ###################################################################################
@@ -165,6 +172,9 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
         try:
             __Log("Building raster object")
             spMap = arcpy.Raster(habDir + sp)
+            # Set processing extent to habitat map to be faster than using zonefile extent
+            if extent == "habMap":
+                arcpy.env.extent = spMap.extent
             RasterReport(spMap)
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
