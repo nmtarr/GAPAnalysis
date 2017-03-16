@@ -22,6 +22,8 @@ def MakeRemapList(mapUnitCodes, reclassValue):
     return remap 
     
     
+    
+    
 def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     '''
     (string, string, string, boolean, boolean) -> saved figures
