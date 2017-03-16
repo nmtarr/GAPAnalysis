@@ -22,7 +22,7 @@ def MakeRemapList(mapUnitCodes, reclassValue):
     return remap 
     
     
-def RATplot(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
+def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     '''
     (string, string, string, boolean, boolean) -> saved figures
     
@@ -41,7 +41,7 @@ def RATplot(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
         plotting.  
     
     Example:
-    >>> RATplot(raster="T:/temp/a_richness_map.tif", OgiveName="T:/temp/Ogive.png",
+    >>> PlotRAT(raster="T:/temp/a_richness_map.tif", OgiveName="T:/temp/Ogive.png",
                 DistributionName="T:/temp/RATdist.png", dropMax=True, dropZero=True)
     '''
     import arcpy, pandas as pd
@@ -82,7 +82,7 @@ def RATplot(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     fig2.savefig(DistributionName)
 
 
-def RATdescription(raster, percentile_list, dropMax=False, dropZero=False):
+def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     '''
     (string, list, boolean, boolean) -> dictionary
     
@@ -99,7 +99,7 @@ def RATdescription(raster, percentile_list, dropMax=False, dropZero=False):
         plotting.  
     
     Example:
-    >>> RATdescription(raster="T:/temp/a_richness_map.tif", 
+    >>> DescribeRAT(raster="T:/temp/a_richness_map.tif", 
                        percentile_list=[25, 50, 75],
                        dropMax=True, 
                        dropZero=True)
@@ -142,7 +142,7 @@ def RATdescription(raster, percentile_list, dropMax=False, dropZero=False):
     # Find percentile values
     DF0.drop("countXvalue", inplace=True, axis=1)
     DF0["cumFreq"] = DF0.freq.cumsum()
-    for percentile in percentiles:
+    for percentile in percentile_list:
         percentile_freq = DF0.freq.sum()*(percentile/100.)
         percentile_value = DF0.cumFreq.searchsorted(percentile_freq)[0]
         resultsDict[str(percentile) + "th"] = percentile_value
