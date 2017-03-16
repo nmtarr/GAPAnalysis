@@ -24,7 +24,8 @@ def MakeRemapList(mapUnitCodes, reclassValue):
     
     
     
-def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
+def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitle="", 
+            dropMax=False, dropZero=False,):
     '''
     (string, string, string, boolean, boolean) -> saved figures
     
@@ -37,6 +38,8 @@ def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     OgiveName -- Path and filename to use for the Ogive plot name. Give a ".png" suffix.
     DistribtuionName -- Path and filename to use for the plot of value vs. count.
         Give this a ".png" suffix.
+    OgiveTitle -- Title to use for the Ogive plot.
+    DistributionTitle -- Title to use for the distribution plot.
     dropMax -- True or False to drop the highest value from the table.  This is useful
         when using richness rasters that included "counter pixels" in the NW corner.
     dropZero -- True or False, will the row for zero values from the table before 
@@ -44,7 +47,8 @@ def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     
     Example:
     >>> PlotRAT(raster="T:/temp/a_richness_map.tif", OgiveName="T:/temp/Ogive.png",
-                DistributionName="T:/temp/RATdist.png", dropMax=True, dropZero=True)
+                DistributionName="T:/temp/RATdist.png", dropMax=True, dropZero=True,
+                OgiveTitle="All Species", DistributionTitle="All Species",)
     '''
     import arcpy, pandas as pd
     
@@ -72,13 +76,13 @@ def PlotRAT(raster, OgiveName, DistributionName, dropMax=False, dropZero=False):
     DF1 = DF0.copy()
     DF1["cumFreq"] = DF1.freq.cumsum()
     DF1.drop("freq", axis=1, inplace=True)
-    ax = DF1.plot(kind="line", legend=False)
+    ax = DF1.plot(kind="line", legend=False, title=OgiveTitle)
     ax.set_ylabel("cumulative frequency (cells)")
     fig = ax.get_figure()
     fig.savefig(OgiveName)
     
     # Make distribution plot
-    ax2 = DF0.plot(kind="line", legend=False)
+    ax2 = DF0.plot(kind="line", legend=False, title=DistributionTitle)
     ax2.set_ylabel("frequency (cells)")
     fig2 = ax2.get_figure()
     fig2.savefig(DistributionName)
