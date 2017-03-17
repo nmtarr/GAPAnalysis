@@ -77,13 +77,13 @@ def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitl
     DF1["cumFreq"] = DF1.freq.cumsum()
     DF1.drop("freq", axis=1, inplace=True)
     ax = DF1.plot(kind="line", legend=False, title=OgiveTitle)
-    ax.set_ylabel("cumulative frequency (cells)")
+    ax.set_ylabel("cumulative frequency (# cells)")
     fig = ax.get_figure()
     fig.savefig(OgiveName)
     
     # Make distribution plot
     ax2 = DF0.plot(kind="line", legend=False, title=DistributionTitle)
-    ax2.set_ylabel("frequency (cells)")
+    ax2.set_ylabel("frequency (# cells)")
     fig2 = ax2.get_figure()
     fig2.savefig(DistributionName)
 
