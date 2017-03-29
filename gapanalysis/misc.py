@@ -19,9 +19,7 @@ def MakeRemapList(mapUnitCodes, reclassValue):
         o.append(x)
         o.append(reclassValue)
         remap.append(o)
-    return remap 
-    
-    
+    return remap    
     
     
 def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitle="", 

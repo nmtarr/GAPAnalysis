@@ -1,0 +1,105 @@
+Python Library Documentation: module gapanalysis.data in gapanalysis
+
+NAME
+    gapanalysis.data - A module of functions related to managing the data needed for analyses.
+
+FILE
+    t:\scripts\gapanalysis\gapanalysis\data.py
+
+FUNCTIONS
+    CheckHabMaps(rasters, nodata=0, Format='TIFF', pixel_type='U2', maximum=3, minimum=3, zero=False)
+        (list) -> dictionary
+        
+        Returns a dictionary of lists, one for each error that the function tests for.
+            It looks for tables with a count of values less than zero, raster values
+            greater than 3, and rasters that have an issue with search cursors. 
+            Also checks that the properties of a list of rasters, match the desired 
+            properties for species models (TIFF, Albers projection, 8 bit unsigned 
+            pixel type, NoDataValue = nodata). Designed for testing GAP species model output
+            specifically.
+        
+            Keys:
+            "WrongProjection" -- Raster has projection other than Albers.
+            "WrongNoDataValue" -- Raster has nodata value other than nodata.
+            "WrongPixelType" -- The pixel type isn't correct.
+            "WrongFormat" -- Raster isn't the desired type.
+            "WrongMinimum" -- Minimum from cell statistics is > allowable minimum.
+            "WrongMaximum" -- Maximum from cell statistics is > allowable maximum.
+            "BadCount" -- A pixel value has a count < or = 0.
+            "CursorProblem" -- Arcpy can't create a cursor to read the attribute table so 
+                the table is likely corrupt.
+            "overMax" -- The table has a value > allowable maximum in it.
+            "NoRows" -- A table exists, but doesn't have any rows.
+            "Zeros" -- The value "0" exists in the table.
+        
+        Argument:
+        rasters -- A list of rasters to check.
+        nodata -- Designate a desired nodata value.
+        Format -- The desired format (i.e., "TIFF" or "GRID") 
+        maximum -- Allowable max value for the raster.
+        minimum -- Allowable min value for the raster.
+        zero -- True or False on whether to check for the existence of 0 values in the table.
+        
+        
+        Examples:
+        >>> BadProperties = CheckRasters(arcpy.ListRasters())
+        >>> a = BadProperties["WrongNoDataValue"]
+        >>> a
+        ['amwlfx.tif', 'andsax.tif']
+    
+    Make0123(rasters, CONUS_extent, from_dir, to_dir, log='P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt')
+        (list, string, string, string, string, string) -> saved raster
+        
+        Copies a GAP habitat map that is in the format of values 1-3 and nodata (no zeros) 
+            and with an extent defined by the species range to a full CONUS extent version
+            with zero's and original values throughout. Also adds 9 pixels to the upper 
+            left corner of the map if the CONUS_extent layer has them.  NOTE: This takes
+            about 25 minutes to run one species.
+        
+        Arguments:
+        rasters -- A list of rasters to check.
+        CONUS_extent -- A raster with a national extent and zeros everywhere except for 
+            counter cells.  Also used as a snap raster.
+        from_dir -- Where to find the habitat maps to process.
+        to_dir -- Directory to work in and save output.  It should have a subdirectory named
+            "0123".
+        log -- Path to the log file used to keep track of habmap movement and creation.
+        
+        Examples:
+        >>> gapanalysis.data.Expand_0s(rasters=arcpy.ListRasters(), 
+                                       CONUS_extent="C:/gapanalysis/data/CONUS_extent",
+                                       from_dir="C:/models/",
+                                       to_dir="C:/models/Output/",
+                                       log = "P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt")
+        >>>
+    
+    Make01Seasonal(rasters, seasons, from_dir, to_dir, CONUS_extent, log='P:/Proj3/USGap/Vert/Model/Output/CONUS/log.txt')
+        (list, list, string, string, raster) -> saved rasters
+        
+        Copies a GAP habitat map that is in the format of values 1-3 and nodata (no zeros) 
+            and with an extent defined by the species range to a full CONUS extent version
+            with zero's and 1's throughout. A raster is saved for each season in "Summer", 
+            "Winter", or "Any" directory.  Also adds 9 pixels to the upper left corner of 
+            the map if the conus raster has them.  Runtime for 1 species creating each season
+            is around 2 hours.  Consider 
+            
+        Arguments:
+        rasters -- A list of rasters to copy.
+        seasons -- A list of seasons create rasters for.
+        from_dir -- Directory to copy rasters from.
+        to_dir -- Directory to create seasonal subdirectories into and save to.
+        log -- The log file to record progress to.
+        CONUS_extent -- A full continental extent raster (30m, albers), composed entirely of
+            zeros and counter pixels with value "1" in the top left corner if desired.  This
+            layer is used for setting the extent, snapgrid, and adding the counter pixels.
+        
+        Examples:
+        >>> gapanalysis.data.MakeSeasonalBinary(rasters=arcpy.ListRasters(),
+                                                seasons=["any", "Summer", "w"],
+                                                from_dir="C:/data/maps/"
+                                                to_dir="C:/data/Output/",
+                                                CONUS_extent="C:/data/conus_ext_cnt",
+                                                log="P:/Proj3/USGap/Vert/Model/Output/Conus/log.txt")
+        >>>
+
+

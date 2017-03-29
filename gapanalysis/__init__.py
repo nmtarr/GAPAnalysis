@@ -1,3 +1,3 @@
-import landcover, misc, richness, data, habitat
+import landcover, misc, richness, data, habitat, docs
 
-_all__ = ['landcover', 'misc', 'richness', 'data', 'habitat']
+__all__ = ['landcover', 'misc', 'richness', 'data', 'habitat', 'docs']

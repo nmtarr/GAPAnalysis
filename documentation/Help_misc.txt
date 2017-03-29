@@ -1,0 +1,69 @@
+Python Library Documentation: module gapanalysis.misc in gapanalysis
+
+NAME
+    gapanalysis.misc
+
+FILE
+    t:\scripts\gapanalysis\gapanalysis\misc.py
+
+FUNCTIONS
+    DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False)
+        (string, list, boolean, boolean) -> dictionary
+        
+        Creates a dictionary of measures of variability for a Raster Attribute Table (RAT).
+            Includes mean, range (as a tuple), and percentile values from the list passed.
+        
+        Argument:
+        raster -- A path to a raster with an attribute table (RAT) to summarize.
+        percentile_list -- A python list of percentiles to calculate and include in the 
+            dictionary that is returned.
+        dropMax -- True or False to drop the highest value from the table.  This is useful
+            when using richness rasters that included "counter pixels" in the NW corner.
+        dropZero -- True or False, will the row for zero values from the table before 
+            plotting.  
+        
+        Example:
+        >>> DescribeRAT(raster="T:/temp/a_richness_map.tif", 
+                           percentile_list=[25, 50, 75],
+                           dropMax=True, 
+                           dropZero=True)
+    
+    MakeRemapList(mapUnitCodes, reclassValue)
+        (list, integer) -> list of lists
+        
+        Returns a RemapValue list for use with arcpy.sa.Reclassify()
+        
+        Arguments:
+        mapUnitCodes -- A list of land cover map units that you with to reclassify.
+        reclassValue -- The value that you want to reclassify the mapUnitCodes that you
+            are passing to.
+        
+        Example:
+        >>> MakeRemap([1201, 2543, 5678, 1234], 1)
+        [[1201, 1], [2543, 1], [5678, 1], [1234, 1]]
+    
+    PlotRAT(raster, OgiveName, DistributionName, OgiveTitle='', DistributionTitle='', dropMax=False, dropZero=False)
+        (string, string, string, boolean, boolean) -> saved figures
+        
+        Creates and saves two figures that summarize a Raster Attribute Table (RAT).  The 
+            Ogive plot is a graph of value vs. cumulative frequency (count).  The 
+            distribution plot is a graph of the value vs. frequency (count).
+        
+        Argument:
+        raster -- A path to a raster with an attribute table (RAT) to summarize.
+        OgiveName -- Path and filename to use for the Ogive plot name. Give a ".png" suffix.
+        DistribtuionName -- Path and filename to use for the plot of value vs. count.
+            Give this a ".png" suffix.
+        OgiveTitle -- Title to use for the Ogive plot.
+        DistributionTitle -- Title to use for the distribution plot.
+        dropMax -- True or False to drop the highest value from the table.  This is useful
+            when using richness rasters that included "counter pixels" in the NW corner.
+        dropZero -- True or False, will the row for zero values from the table before 
+            plotting.  
+        
+        Example:
+        >>> PlotRAT(raster="T:/temp/a_richness_map.tif", OgiveName="T:/temp/Ogive.png",
+                    DistributionName="T:/temp/RATdist.png", dropMax=True, dropZero=True,
+                    OgiveTitle="All Species", DistributionTitle="All Species",)
+
+

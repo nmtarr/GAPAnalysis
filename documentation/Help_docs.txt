@@ -1,0 +1,32 @@
+Python Library Documentation: module gapanalysis.docs in gapanalysis
+
+NAME
+    gapanalysis.docs - A module of functions related to searching/manipulating text files.
+
+FILE
+    t:\scripts\gapanalysis\gapanalysis\docs.py
+
+FUNCTIONS
+    Write(document, text, mode='append')
+        (string, string, [string]) -> boolean
+        
+        Writes text to a document. If necessary, the function will create the
+            directories and the file itself. Ensures closure of the document.
+        
+        Returns True if the function ran successfully. Otherwise, returns False.
+        
+        Arguments:
+        document -- The file to which the text will be added.
+        text -- The text you wish to write to the document.
+        mode -- Indicates whether you wish to append or overwrite the document. The
+            only valid entries are 'Append' or 'Overwrite' (capitalization is
+            irrelevant). 'Append' is the default option.
+            Technically, 'a' or 'o' can be entered instead.
+        
+        Examples:
+        >>> Write('mydoc.txt', 'Write this test')
+        True
+        >>> Write('mydoc.txt', 'Write this test', 'overwrite')
+        True
+
+
