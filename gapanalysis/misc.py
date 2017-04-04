@@ -25,7 +25,7 @@ def MakeRemapList(mapUnitCodes, reclassValue):
 def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitle="", 
             dropMax=False, dropZero=False,):
     '''
-    (string, string, string, boolean, boolean) -> saved figures
+    (string, string, string, [boolean], [boolean]) -> saved figures
     
     Creates and saves two figures that summarize a Raster Attribute Table (RAT).  The 
         Ogive plot is a graph of value vs. cumulative frequency (count).  The 
@@ -88,7 +88,7 @@ def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitl
 
 def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     '''
-    (string, list, boolean, boolean) -> dictionary
+    (string, list, [boolean], [boolean]) -> dictionary
     
     Creates a dictionary of measures of variability for a Raster Attribute Table (RAT).
         Includes mean, range (as a tuple), and percentile values from the list passed.
@@ -122,7 +122,7 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
         frequency = row.getValue("COUNT")
         value = row.getValue("VALUE")
         DF0.loc[value, "freq"] = frequency
-    
+
     if dropMax == True:
         # Drop highest value/counter
         DF0 = DF0[:-1]
@@ -138,11 +138,12 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     resultsDict["mean"] = mean
     
     # Calculate the range
-    _min = DF0.index.min()
-    _max = DF0.index.max()
+    _min = DF0.value.min()
+    _max = DF0.value.max()
     _range = _min, _max
     resultsDict["range"] = _range
-    
+    DF0.set_index(["value"], drop=True, inplace=True)
+
     # Find percentile values
     DF0.drop("countXvalue", inplace=True, axis=1)
     DF0["cumFreq"] = DF0.freq.cumsum()
@@ -152,6 +153,4 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
         resultsDict[str(percentile) + "th"] = percentile_value
     
     # Return result 
-    return resultsDict    
-    
-    
+    return resultsDict
