@@ -93,6 +93,11 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     Creates a dictionary of measures of variability for a Raster Attribute Table (RAT).
         Includes mean, range (as a tuple), and percentile values from the list passed.
     
+    Note: Uses pd.Series.searchsorted for getting percentile values.  This is a complicated
+        process that should match quantile interpolation methods during comparisons 
+        with values from other tables.  It seems to behave like "interpolation="higher"" 
+        in pd.quantile().
+    
     Argument:
     raster -- A path to a raster with an attribute table (RAT) to summarize.
     percentile_list -- A python list of percentiles to calculate and include in the 
@@ -103,7 +108,7 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
         plotting.  
     
     Example:
-    >>> DescribeRAT(raster="T:/temp/a_richness_map.tif", 
+    >>> aDict = DescribeRAT(raster="T:/temp/a_richness_map.tif", 
                        percentile_list=[25, 50, 75],
                        dropMax=True, 
                        dropZero=True)
@@ -136,20 +141,19 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     DF0["countXvalue"] = DF0.value * DF0.freq
     mean = DF0.countXvalue.sum()/DF0.freq.sum()
     resultsDict["mean"] = mean
-    
+
     # Calculate the range
     _min = DF0.value.min()
     _max = DF0.value.max()
     _range = _min, _max
     resultsDict["range"] = _range
-    DF0.set_index(["value"], drop=True, inplace=True)
-
+    
     # Find percentile values
     DF0.drop("countXvalue", inplace=True, axis=1)
     DF0["cumFreq"] = DF0.freq.cumsum()
     for percentile in percentile_list:
         percentile_freq = DF0.freq.sum()*(percentile/100.)
-        percentile_value = DF0.cumFreq.searchsorted(percentile_freq)[0]
+        percentile_value = DF0.loc[DF0.cumFreq.searchsorted(percentile_freq)[0], "value"]
         resultsDict[str(percentile) + "th"] = percentile_value
     
     # Return result 
