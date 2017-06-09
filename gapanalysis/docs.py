@@ -4,6 +4,7 @@ A module of functions related to searching/manipulating text files.
 
 import os
 
+
 ##################################
 #### Public function to write the given text to a given document.
 def Write(document, text, mode='append'):
