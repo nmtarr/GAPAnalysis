@@ -119,10 +119,9 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             weightsDF.loc[sp, "cnt"] = count
     
     if weight == "percentile":
-        weightsDF["weight"] = (stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
-    
+        weightsDF["weight"] = 100*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
     if weight == "area":
-        weightsDF["weight"] = [1./c for c in weightsDF.cnt]
+        weightsDF["weight"] = [c for c in weightsDF.cnt]
     
     #################################### Sum rasters, saving the tally periodically
     ###############################################################################    
@@ -137,7 +136,6 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             counter += 1
             print(counter)
             tally_file_name = intDir + "/Intermediate_{0}.tif".format(counter)
-            print(tally_file_name)
             # Determine the weight for the species
             if weight == "None":
                 weight = 1
