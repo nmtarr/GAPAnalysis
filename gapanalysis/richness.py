@@ -1,4 +1,5 @@
-def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, CONUSExtent):    
+def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, 
+                CONUSExtent, weight="None"):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -29,16 +30,23 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, CONUSExt
     CONUSExtent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
+    weight -- option to weight each species to allow less widespead species to 
+        count more.  Options are "None", "percentile", and "area".  None
+        is the default and will weight each species equally (1).  Percentile
+        will weight with 1/proportion of species (from the list you provided, 
+        which is important to note) with a pixel count below the species' 
+        pixel count.  The area option will use 1/species pixel count.  
 
     Example:
     >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
                         outLoc='C:/GIS_Data/Richness', modelDir='C:/Data/Model/Output',
-                        season="Summer", intervalSize=20, 
+                        season="Summer", intervalSize=20, weight="None",
                         log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
     C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, C:\GIS_Data\Richness\MyRandomSpecies.csv
     '''    
     
-    import os, datetime, arcpy 
+    import os, datetime, arcpy, pandas as pd
+    from scipy import stats
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.ResetEnvironments()
     arcpy.env.overwriteOutput=True
@@ -92,9 +100,29 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, CONUSExt
     __Log(starttime.strftime("%c"))
     __Log('\nProcessing {0} species as "{1}".\n'.format(sppLength, groupName).upper())
     __Log('Season of this calculation: ' + season)
+    __Log('Weighting method: ' + weight)
     __Log('Table written to {0}'.format(outTable))
     __Log('\nThe species that will be used for analysis:')
     __Log(str(spp) + '\n')
+
+    ################################################ Create a dataframe for weights
+    ###############################################################################  
+    if weight != "None":
+        weightsDF = pd.DataFrame()
+        # Record habitat area per species in the table
+        for sp in spp:
+            habmap = arcpy.Raster(modelDir + sp)
+            rows = arcpy.SearchCursor(habmap)
+            for row in rows:
+                if row.getValue("VALUE") == 1:
+                    count = row.getValue("COUNT")
+            weightsDF.loc[sp, "cnt"] = count
+    
+    if weight == "percentile":
+        weightsDF["weight"] = (stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
+    
+    if weight == "area":
+        weightsDF["weight"] = [1./c for c in weightsDF.cnt]
     
     #################################### Sum rasters, saving the tally periodically
     ###############################################################################    
@@ -105,11 +133,18 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, CONUSExt
         try:
             starttime2=datetime.datetime.now()
             __Log(sp)
-            sp = arcpy.Raster(modelDir + sp)
+            habmap = arcpy.Raster(modelDir + sp)
             counter += 1
             print(counter)
             tally_file_name = intDir + "/Intermediate_{0}.tif".format(counter)
-            tally = tally + sp
+            print(tally_file_name)
+            # Determine the weight for the species
+            if weight == "None":
+                weight = 1
+            if weight != "None":
+                weight = weightsDF.loc[sp, "weight"]
+            __Log("\tweight = " + str(1./weight))
+            tally = tally + (habmap/weight)
             if counter - 1 in range(0, 2000, interval):
                 tally.save(tally_file_name)
                 arcpy.management.BuildRasterAttributeTable(in_raster=tally_file_name,
