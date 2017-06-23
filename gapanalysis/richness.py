@@ -87,8 +87,8 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     ################################################ Create a dataframe for weights
     ###############################################################################  
     outTable = os.path.join(outDir, groupName + '.csv')
+    weightsDF = pd.DataFrame()
     if weight != "None":
-        weightsDF = pd.DataFrame()
         # Record habitat area per species in the table
         for sp in spp:
             habmap = arcpy.Raster(modelDir + sp)
@@ -138,9 +138,8 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             tally_file_name = intDir + "/Intermediate_{0}.tif".format(counter)
             # Determine the weight for the species and add accordingling
             if weight == "None":
-                weight = 1
                 __Log("\tvalue = " + str(1))
-                tally = tally + 1
+                tally = tally + habmap
             if weight != "None":
                 weight = weightsDF.loc[sp, "weight"]
                 # These cases would produce float data type 
