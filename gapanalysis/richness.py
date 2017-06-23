@@ -84,14 +84,6 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
         with open(log, 'a') as logDoc:
             logDoc.write(content + '\n')
     
-    ############################### Write a table with species included in a column
-    ###############################################################################
-    outTable = os.path.join(outDir, groupName + '.csv')
-    spTable = open(outTable, "a")
-    for s in spp:
-        spTable.write(str(s) + ",\n")
-    spTable.close()
-    
     ###################################################### Write header to log file
     ###############################################################################
     __Log("\n" + ("#"*67))
@@ -107,6 +99,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
 
     ################################################ Create a dataframe for weights
     ###############################################################################  
+    outTable = os.path.join(outDir, groupName + '.csv')
     if weight != "None":
         weightsDF = pd.DataFrame()
         # Record habitat area per species in the table
@@ -117,11 +110,16 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
                 if row.getValue("VALUE") == 1:
                     count = row.getValue("COUNT")
             weightsDF.loc[sp, "cnt"] = count
-    
     if weight == "percentile":
-        weightsDF["weight"] = 100*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
+        weightsDF["weight"] = 100.*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
     if weight == "area":
-        weightsDF["weight"] = [c for c in weightsDF.cnt]
+        weightsDF["weight"] = [c*1. for c in weightsDF.cnt]
+    
+    if weight == "None":
+        spTable = open(outTable, "a")
+        for s in spp:
+            spTable.write(str(s) + ",\n")
+        spTable.close()
     
     #################################### Sum rasters, saving the tally periodically
     ###############################################################################    
@@ -136,18 +134,28 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             counter += 1
             print(counter)
             tally_file_name = intDir + "/Intermediate_{0}.tif".format(counter)
-            # Determine the weight for the species
+            # Determine the weight for the species and add accordingling
             if weight == "None":
                 weight = 1
+                __Log("\tvalue = " + str(1))
+                tally = tally + 1
             if weight != "None":
                 weight = weightsDF.loc[sp, "weight"]
-            __Log("\tweight = " + str(1./weight))
-            tally = tally + (habmap/weight)
+                # These cases would produce float data type 
+                # so multiply by 1000 for integers
+                __Log("\tvalue = " + str((1/weight)))
+                tally = tally + (habmap/weight)
+            
             if counter - 1 in range(0, 2000, interval):
-                tally.save(tally_file_name)
+                if weight == "None":
+                    tally.save(tally_file_name)
+                if weight != "None":
+                    intermediate = arcpy.sa.Int((tally*10000) + 0.5)
+                    intermediate.save(tally_file_name)
                 arcpy.management.BuildRasterAttributeTable(in_raster=tally_file_name,
                                                            overwrite=False)
                 __Log('\tSaved to {0}'.format(tally_file_name))
+                    
             """if  counter != tally.maximum:
                 __Log('\tWARNING! Invalid maximum cell value in {0}'.format(tally_file_name))"""
             __Log("\tRuntime: " + str(datetime.datetime.now() - starttime2))
@@ -160,7 +168,11 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     try:
         richness_file_name = outDir + "/Richness.tif"
         __Log('Saving richness raster to {0}'.format(richness_file_name))
-        tally.save(richness_file_name)
+        if weight != "None":
+            finalrichness = arcpy.sa.Int((tally*10000) + 0.5)
+            finalrichness.save(richness_file_name)
+        if weight == "None":
+            tally.save(richness_file_name)
         __Log('Richness raster saved')
         __Log('Building RAT')
         arcpy.management.BuildRasterAttributeTable(in_raster=richness_file_name,
