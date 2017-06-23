@@ -84,19 +84,6 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
         with open(log, 'a') as logDoc:
             logDoc.write(content + '\n')
     
-    ###################################################### Write header to log file
-    ###############################################################################
-    __Log("\n" + ("#"*67))
-    __Log("The results from richness processing")
-    __Log("#"*67)    
-    __Log(starttime.strftime("%c"))
-    __Log('\nProcessing {0} species as "{1}".\n'.format(sppLength, groupName).upper())
-    __Log('Season of this calculation: ' + season)
-    __Log('Weighting method: ' + weight)
-    __Log('Table written to {0}'.format(outTable))
-    __Log('\nThe species that will be used for analysis:')
-    __Log(str(spp) + '\n')
-
     ################################################ Create a dataframe for weights
     ###############################################################################  
     outTable = os.path.join(outDir, groupName + '.csv')
@@ -110,16 +97,31 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
                 if row.getValue("VALUE") == 1:
                     count = row.getValue("COUNT")
             weightsDF.loc[sp, "cnt"] = count
-    if weight == "percentile":
-        weightsDF["weight"] = 100.*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
-    if weight == "area":
-        weightsDF["weight"] = [c*1. for c in weightsDF.cnt]
-    
+        if weight == "percentile":
+            weightsDF["weight"] = 100.*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
+        if weight == "area":
+            weightsDF["weight"] = [c*1. for c in weightsDF.cnt]
+        weightsDF["weighted_value"] = 1./(weightsDF.weight)
+        weightsDF.to_csv(outTable)
+        
     if weight == "None":
         spTable = open(outTable, "a")
         for s in spp:
-            spTable.write(str(s) + ",\n")
+            spTable.write(str(s) + ", {0}".format(str(1)) + ",\n")
         spTable.close()
+    
+    ###################################################### Write header to log file
+    ###############################################################################
+    __Log("\n" + ("#"*67))
+    __Log("The results from richness processing")
+    __Log("#"*67)    
+    __Log(starttime.strftime("%c"))
+    __Log('\nProcessing {0} species as "{1}".\n'.format(sppLength, groupName).upper())
+    __Log('Season of this calculation: ' + season)
+    __Log('Weighting method: ' + weight)
+    __Log('Table written to {0}'.format(outTable))
+    __Log('\nThe species that will be used for analysis:')
+    __Log(str(spp) + '\n')
     
     #################################### Sum rasters, saving the tally periodically
     ###############################################################################    
