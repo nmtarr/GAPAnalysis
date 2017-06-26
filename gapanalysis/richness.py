@@ -100,7 +100,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
         if weight == "percentile":
             weightsDF["weight"] = 100.*(stats.rankdata(weightsDF.cnt, method="average")/len(weightsDF.cnt))
         if weight == "area":
-            weightsDF["weight"] = [c*1. for c in weightsDF.cnt]
+            weightsDF["weight"] = [(c-9)*1. for c in weightsDF.cnt]
         weightsDF["weighted_value"] = 1./(weightsDF.weight)
         weightsDF.to_csv(outTable)
         
