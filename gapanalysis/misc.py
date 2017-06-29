@@ -93,10 +93,17 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     Creates a dictionary of measures of variability for a Raster Attribute Table (RAT).
         Includes mean, range (as a tuple), and percentile values from the list passed.
     
-    Note: Uses pd.Series.searchsorted for getting percentile values.  This is a complicated
+    Note: Uses pd.Series.searchsorted for getting percentile values, which returns the
+        index value of a series such that the passed value occurs just before the returned
+        value.  For example, it returns the index value of the value just after the 
+        position in which the passed value would go.  This is a complicated
         process that should match quantile interpolation methods during comparisons 
         with values from other tables.  It seems to behave like "interpolation="higher"" 
-        in pd.quantile().
+        in pd.quantile().  The value returned for a percentile is the value with
+        the count that pushes the cumulative frequency of sorted values over the
+        percentile.  So, if a value of 20 were returned for the 95th percentile,
+        then values of 20 and below comprise 95% of the pixels, plus some extra
+        pixels.
     
     Argument:
     raster -- A path to a raster with an attribute table (RAT) to summarize.

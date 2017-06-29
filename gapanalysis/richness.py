@@ -38,7 +38,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
         pixel count.  The area option will use 1/species pixel count.  
 
     Example:
-    >>> ProcessRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
+    >>> MapRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
                         outLoc='C:/GIS_Data/Richness', modelDir='C:/Data/Model/Output',
                         season="Summer", intervalSize=20, weight="None",
                         log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
@@ -53,7 +53,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     arcpy.env.pyramid = 'NONE'
     arcpy.env.snapRaster = CONUSExtent
     arcpy.env.rasterStatistics = "STATISTICS"
-    arcpy.env.cellSize = 30
+    arcpy.env.cellSize = "MINOF"
     arcpy.env.extent = CONUSExtent
     starttime = datetime.datetime.now()      
     
