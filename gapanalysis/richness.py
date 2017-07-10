@@ -167,7 +167,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     #################################### The tally at the end is the final richness
     ###############################################################################         
     try:
-        richness_file_name = outDir + "/Richness.tif"
+        richness_file_name = outDir + "/{0}_Richness.tif".format(groupName)
         __Log('Saving richness raster to {0}'.format(richness_file_name))
         if weight != "None":
             finalrichness = arcpy.sa.Int((tally*10000) + 0.5)
