@@ -86,19 +86,19 @@ def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitl
     fig2.savefig(DistributionName)
 
 
-def RasterCentralTendency(raster):
+def RasterStats(raster):
     '''
     (string) -> dictionary
     
     Creates a dictionary of measures of central tendency for a raster's values.
-        Includes mean, range (as a tuple), standard error, and coefficient of
-        variation.  Handles integer or floating point rasters.
+        Includes mean, range (as a tuple), standard deviation, and coefficient
+        of variation.  Handles integer or floating point rasters.
     
     Argument:
     raster -- A path to a raster to summarize.
         
     Example:
-    >>> aDict = Describe(raster="T:/temp/a_richness_map.tif")
+    >>> aDict = RasterStats(raster="T:/temp/a_richness_map.tif")
     '''
     import arcpy
     # Create dictionary for results
@@ -121,7 +121,7 @@ def RasterCentralTendency(raster):
     return resultsDict
 
 
-def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
+def RATStats(raster, percentile_list, dropMax=False, dropZero=False):
     '''
     (string, list, [boolean], [boolean]) -> dictionary
     
@@ -143,7 +143,7 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
         plotting.  
     
     Example:
-    >>> aDict = DescribeRAT(raster="T:/temp/a_richness_map.tif", 
+    >>> aDict = RATStats(raster="T:/temp/a_richness_map.tif", 
                        percentile_list=[25, 50, 75],
                        dropMax=True, 
                        dropZero=True)
