@@ -86,6 +86,41 @@ def PlotRAT(raster, OgiveName, DistributionName, OgiveTitle="", DistributionTitl
     fig2.savefig(DistributionName)
 
 
+def RasterCentralTendency(raster):
+    '''
+    (string) -> dictionary
+    
+    Creates a dictionary of measures of central tendency for a raster's values.
+        Includes mean, range (as a tuple), standard error, and coefficient of
+        variation.  Handles integer or floating point rasters.
+    
+    Argument:
+    raster -- A path to a raster to summarize.
+        
+    Example:
+    >>> aDict = Describe(raster="T:/temp/a_richness_map.tif")
+    '''
+    import arcpy
+    # Create dictionary for results
+    resultsDict = {}
+    # Calculate mean value
+    mean = arcpy.GetRasterProperties_management(raster, "MEAN").getOutput(0)
+    resultsDict["mean"] = float(mean)
+    # Calculate std
+    std = arcpy.GetRasterProperties_management(raster, "STD").getOutput(0)
+    resultsDict["standard_deviation"] = float(std)
+    # Calculate coefficient of variation
+    cv = 100*(float(std)/float(mean))
+    resultsDict["coefficient_of_variation"] = cv
+    # Calculate the range
+    _min = float(arcpy.GetRasterProperties_management(raster, "MINIMUM").getOutput(0))
+    _max = float(arcpy.GetRasterProperties_management(raster, "MAXIMUM").getOutput(0))
+    _range = float(_min), float(_max)
+    resultsDict["range"] = _range
+    # Return result 
+    return resultsDict
+
+
 def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     '''
     (string, list, [boolean], [boolean]) -> dictionary
@@ -93,17 +128,10 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
     Creates a dictionary of measures of variability for a Raster Attribute Table (RAT).
         Includes mean, range (as a tuple), and percentile values from the list passed.
     
-    Note: Uses pd.Series.searchsorted for getting percentile values, which returns the
-        index value of a series such that the passed value occurs just before the returned
-        value.  For example, it returns the index value of the value just after the 
-        position in which the passed value would go.  This is a complicated
+    Note: Uses pd.Series.searchsorted for getting percentile values.  This is a complicated
         process that should match quantile interpolation methods during comparisons 
         with values from other tables.  It seems to behave like "interpolation="higher"" 
-        in pd.quantile().  The value returned for a percentile is the value with
-        the count that pushes the cumulative frequency of sorted values over the
-        percentile.  So, if a value of 20 were returned for the 95th percentile,
-        then values of 20 and below comprise 95% of the pixels, plus some extra
-        pixels.
+        in pd.quantile().
     
     Argument:
     raster -- A path to a raster with an attribute table (RAT) to summarize.
@@ -121,40 +149,36 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
                        dropZero=True)
     '''
     import arcpy, pandas as pd
-    
     # Create empty dataframe
     DF0 = pd.DataFrame(index=[], columns=[])
-    
     # Create dictionary for results
     resultsDict = {}
-    
     # Use search cursor to copy RAT to dataframe
     rows = arcpy.SearchCursor(raster)
     for row in rows:
         frequency = row.getValue("COUNT")
         value = row.getValue("VALUE")
         DF0.loc[value, "freq"] = frequency
-
+    # Drop max and/or zero if specified
     if dropMax == True:
         # Drop highest value/counter
         DF0 = DF0[:-1]
-    
     if dropZero == True:
         DF0 = DF0[DF0.index > 0]
-    
     # Calculate mean value
     DF0.index.name = "value"
     DF0.reset_index(drop=False, inplace=True)
     DF0["countXvalue"] = DF0.value * DF0.freq
     mean = DF0.countXvalue.sum()/DF0.freq.sum()
     resultsDict["mean"] = mean
-
+    # Calculate std
+    std = arcpy.GetRasterProperties_management(raster, "STD").getOutput(0)
+    resultsDict["standard_deviation"] = float(std)
     # Calculate the range
     _min = DF0.value.min()
     _max = DF0.value.max()
     _range = _min, _max
     resultsDict["range"] = _range
-    
     # Find percentile values
     DF0.drop("countXvalue", inplace=True, axis=1)
     DF0["cumFreq"] = DF0.freq.cumsum()
@@ -162,6 +186,5 @@ def DescribeRAT(raster, percentile_list, dropMax=False, dropZero=False):
         percentile_freq = DF0.freq.sum()*(percentile/100.)
         percentile_value = DF0.loc[DF0.cumFreq.searchsorted(percentile_freq)[0], "value"]
         resultsDict[str(percentile) + "th"] = percentile_value
-    
     # Return result 
     return resultsDict
