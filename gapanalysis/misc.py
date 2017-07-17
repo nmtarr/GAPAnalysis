@@ -1,3 +1,28 @@
+
+def RATtoDataFrame(raster):
+    '''
+    (string) -> pandas data frame
+    
+    Returns the raster's attribute table (RAT) as a pandas dataframe with 
+        "value" as the index and "count" as the only column.
+        
+    Arguments:
+    raster -- path to a raster with a valid attribute table.
+    
+    Example:
+    >>>RATDataFrame = RATtoDataFrame("C:/Data/araster.tif")
+    '''
+    import arcpy, pandas as pd
+    raster = arcpy.Raster(raster)
+    RAT = pd.DataFrame()
+    rows = arcpy.SearchCursor(raster)
+    for row in rows:
+        value = row.getValue("VALUE")
+        countt= row.getValue("COUNT")
+        RAT.loc[value, "cell_count"] = countt
+    RAT.index.name = "value"
+    return RAT
+
 def MakeRemapList(mapUnitCodes, reclassValue):
     '''
     (list, integer) -> list of lists
