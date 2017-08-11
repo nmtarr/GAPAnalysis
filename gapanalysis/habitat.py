@@ -3,8 +3,8 @@ Created Oct 31, 2016 by N. Tarr
 Functions related to calculating the amount of species' habitat that falls within zones
 of interest.
 """
-def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, snap,
-                   extent="habMap"):
+def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, scratchDir,
+                   snap, extent="habMap"):
     '''
     (string, string, string, list, string, string, string, string) -> pandas dataframe
     
@@ -36,10 +36,13 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
         an integer with unique values for each zone you are interested in. NOTE: Zero
         is not a valid value!!!
     habmapList -- Python list of GAP habitat maps to analyze. Needs to be a list of 
-        geotiffs named like: "mSEWEx.tif".  
+        geotiffs named like: "mSEWEx_CONUS_HabMap_2001v1.tif".
     habDir -- The directory containing the GAP habitat maps to use in the process.
     workDir -- The name of a directory to save all results, including subfolders, log file
         temp output, and final csv files.  This code builds several subfolders and files.
+    scratchDir -- A scratch directory to work in.  This option included so that 
+        processing can be batched.  If you pass a directory that doesn't exist, it will
+        be created.
     snap -- A 30x30m cell raster to use as a snap grid during processing.
     extent -- Choose "habMap" or "zoneFile".  habMap will process each species overlay
         with an extent matching that species' habitat's extent.  zoneFile will do analyses
@@ -74,9 +77,8 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     if not os.path.exists(workDir):
         os.makedirs(workDir)
     # Create a scratch workspace
-    scratch = workDir + "/ztemp/"
-    if not os.path.exists(scratch):
-        os.makedirs(scratch)
+    if not os.path.exists(scratchDir):
+        os.makedirs(scratchDir)
     # Create directories for archiving results
     archive = workDir + "/Archive"
     if not os.path.exists(archive):
@@ -162,8 +164,8 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
         
     ################################ Loop through rasters, sum species and zone rasters
     ###################################################################################
-    arcpy.env.scratchworkspace = scratch
-    arcpy.env.workspace = scratch
+    arcpy.env.scratchworkspace = scratchDir
+    arcpy.env.workspace = scratchDir
     for sp in habmapList:
         __Log("\n-------" + sp + "-------")
         starttime = datetime.now()
@@ -185,11 +187,11 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
             __Log("ERROR -- {0}".format(e))
         try:
             __Log("Stats, RAT, and checking summed raster")
-            Sum.save(scratch + "tmpSum.tif")
-            arcpy.management.CalculateStatistics(scratch + "tmpSum.tif")
-            arcpy.management.BuildRasterAttributeTable(scratch + "tmpSum.tif", 
+            Sum.save(scratchDir + "tmpSum.tif")            ################################  Can this be ommitted?  It likely slows things down. Can the object have a valid RAT or does it have to be save first?
+            arcpy.management.CalculateStatistics(scratchDir + "tmpSum.tif")
+            arcpy.management.BuildRasterAttributeTable(scratchDir + "tmpSum.tif", 
                                                         overwrite=True)
-            RasterReport(arcpy.Raster(scratch + "tmpSum.tif"))
+            RasterReport(arcpy.Raster(scratchDir + "tmpSum.tif"))
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
@@ -252,8 +254,8 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
             
         # Delete intermediate files
         try:
-            arcpy.management.Delete(scratch + sp)
-            arcpy.management.Delete(scratch + "tmpSum.tif")
+            arcpy.management.Delete(scratchDir + sp)
+            arcpy.management.Delete(scratchDir + "tmpSum.tif")
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
         
@@ -288,7 +290,8 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     df3FileName = workDir + "/archive/" + zoneName + "_" + \
                     starttime.strftime('%Y-%m-%d-%H-%M') + ".csv"
     __Log("Saving new species table to " + df3FileName)
-    df3.to_csv(df3FileName, index_col=["GeoTiff", "Zone"])
+    print(df3)
+    df3.to_csv(df3FileName)#, index_col=["GeoTiff", "Zone"])
     
     # Load the master result table
     masterFileName = workDir + "/Percent_in_" + zoneName + "_Master.csv"
@@ -311,7 +314,7 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
     newMod = [x for x in df3.index if x not in dfMas.index]
     dfNewMod = df3.reindex(newMod)
     dfNewMas = pd.concat([dfMas, dfNewMod])
-    dfNewMas.to_csv(masterFileName, index_col=["GeoTiff", "Zone"])
+    dfNewMas.to_csv(masterFileName)#, index_col=["GeoTiff", "Zone"])
     
     ########################################################################## Clean up
     ###################################################################################   
