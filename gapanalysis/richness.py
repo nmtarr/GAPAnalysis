@@ -162,7 +162,6 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             __Log("\tRuntime: " + str(datetime.datetime.now() - starttime2))
         except Exception as e:
             __Log("ERROR -- {0}".format(e))
-            exit()
             
     #################################### The tally at the end is the final richness
     ###############################################################################         

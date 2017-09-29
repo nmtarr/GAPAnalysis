@@ -20,7 +20,10 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
         are updated.  The result table contains a field for date run and runtime for 
         each species.  The table with all species that have been run is returned as a 
         pandas dataframe.  NOTE: the extent of analyses is set to that of the zoneFile.
-    
+        
+        NOTE:  Running two or more instances of this function (for the same analysis)
+            may execute correctly, but the log file will be jumpled.
+            
     Arguments:
     zoneFile -- A raster layer of the continental U.S. with zones of interest assigned
         a unique value/code.  Must have following properties:
@@ -86,14 +89,15 @@ def PercentOverlay(zoneFile, zoneName, zoneField, habmapList, habDir, workDir, s
         
     ############################################ Function to write data to the log file
     ###################################################################################
-    log = workDir + "/log.txt"
+    starttime0 = datetime.now()
+    timestamp = starttime0.strftime('%Y-%m-%d')
+    
+    log = workDir + "/log{0}.txt".format(timestamp)
     def __Log(content):
         print content
         with open(log, 'a') as logDoc:
-            logDoc.write(content + '\n')   
+            logDoc.write(content + '\n')
     
-    starttime0 = datetime.now()
-    timestamp = starttime0.strftime('%Y-%m-%d')
     __Log("\n\n\n****************  " + timestamp + "  **************************\n")
     __Log("\nRasters that will be processed: " + str(habmapList) + "\n")
     __Log("Checked for and built required directories, lists, & dataframes")
