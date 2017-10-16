@@ -2,7 +2,7 @@
 GAPAnalysis
 ==========
 
-GAPAnalysis facilitates common steps in analyses of GAP habitat maps.  Users will need to have local copies of GAP habitat maps with the original file names.
+GAPAnalysis facilitates common steps in analyses of GAP habitat maps.  Users will need to have local copies of GAP habitat maps with the original file names.  This package also relies heavily upon the arcpy package from ESRI (10.2.1).
 
 Geospatial analyses of the data may require snap grids and an extent raster.  These are included in data.zip.  conus_ext_cnt.tif is a CONUS extent raster (30m resolution) with values zero, except for 9 cells with value of 1 in the top left corner that are useful for error checking when summing lots of rasters.
 
