@@ -8,7 +8,7 @@ import sys, pydoc, os
 sys.path.append('')
 import gapanalysis as ga
 
-helpDir = '/GAPAnalysis/documentation'
+helpDir = '/GAPAnalysis/docs/documentation'
 if not os.path.exists(helpDir):
     os.makedirs(helpDir)
 
