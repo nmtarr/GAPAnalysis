@@ -6,7 +6,7 @@ from os import path
 setup(
     name='GAPAnalysis',
     
-    version='0.3.0',
+    version='0.3',
     
     packages=find_packages(exclude=[]),
     
