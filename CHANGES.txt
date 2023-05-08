@@ -1,1 +1,0 @@
-0.3.dev1, 10/16/2017 -- Initial packaging for potential distribution.

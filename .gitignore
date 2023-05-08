@@ -1,2 +1,6 @@
 *pyc
 data/
+gapconfig.py
+analysisconfig.py
+config.py
+.vscode/

@@ -80,7 +80,7 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     ######################################## Function to write data to the log file
     ###############################################################################
     def __Log(content):
-        print content
+        print(content)
         with open(log, 'a') as logDoc:
             logDoc.write(content + '\n')
     
