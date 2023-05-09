@@ -30,12 +30,12 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     CONUSExtent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
-    weight -- option to weight each species to allow less widespead species to 
+    weight -- option to weight each species to allow less widespread species to 
         count more.  Options are "None", "percentile", and "area".  None
         is the default and will weight each species equally (1).  Percentile
         will weight with 1/proportion of species (from the list you provided, 
         which is important to note) with a pixel count below the species' 
-        pixel count.  The area option will use 1/species pixel count.  
+        pixel count.  The area option will use 1/species pixel count.
 
     Example:
     >>> MapRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
