@@ -4,3 +4,4 @@ gapconfig.py
 analysisconfig.py
 config.py
 .vscode/
+__pycache__/
