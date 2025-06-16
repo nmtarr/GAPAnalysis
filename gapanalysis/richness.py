@@ -1,5 +1,5 @@
 def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize, 
-                CONUSExtent, weight="None"):    
+                CONUSExtent, weight="None", weights_df=None):    
     '''
     (list, str, str, str, str, int, str) -> str, str
 
@@ -31,11 +31,13 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
     weight -- option to weight each species to allow less widespread species to 
-        count more.  Options are "None", "percentile", and "area".  None
+        count more.  Options are "None", "percentile", "area", and "custom".  None
         is the default and will weight each species equally (1).  Percentile
         will weight with 1/proportion of species (from the list you provided, 
         which is important to note) with a pixel count below the species' 
-        pixel count.  The area option will use 1/species pixel count.
+        pixel count. The area option will use 1/species pixel count. Custom
+        allows the user to pass a pandas DataFrame with species names and
+        weights. The dataframe should have two columns: "strUC" and "weight".
 
     Example:
     >>> MapRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
@@ -88,7 +90,8 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     ###############################################################################  
     outTable = os.path.join(outDir, groupName + '.csv')
     weightsDF = pd.DataFrame()
-    if weight != "None":
+    
+    if weight == "percentile" or weight == "area":
         # Record habitat area per species in the table
         for sp in spp:
             habmap = arcpy.Raster(modelDir + sp)
@@ -103,12 +106,30 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             weightsDF["weight"] = [(c-9)*1. for c in weightsDF.cnt]
         weightsDF["weighted_value"] = 1./(weightsDF.weight)
         weightsDF.to_csv(outTable)
+    
+    if weight == "custom":
+        weightsDF = weights_df
+        # set the index to the species codes
+        weightsDF.set_index("strUC", inplace=True)
+
+        # Convert weight to float if it is not already
+        if not pd.api.types.is_float_dtype(weightsDF['weight']):
+            weightsDF['weight'] = weightsDF['weight'].astype(float)
+        
+        # Return an error message if the dataframe is not formatted correctly
+        # Index should be strUC and column should be weight
+        if not isinstance(weightsDF, pd.DataFrame):
+            raise ValueError("The custom weights must be a pandas DataFrame.")
+        if weightsDF.empty:
+            raise ValueError("The custom weights DataFrame is empty.")
         
     if weight == "None":
         spTable = open(outTable, "a")
         for s in spp:
             spTable.write(str(s) + ", {0}".format(str(1)) + ",\n")
         spTable.close()
+    
+    print(weightsDF.head())
     
     ###################################################### Write header to log file
     ###############################################################################
@@ -134,24 +155,35 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
             __Log(sp)
             habmap = arcpy.Raster(modelDir + sp)
             counter += 1
-            print(counter)
+            print(counter, sp[:6])
             tally_file_name = intDir + "/Intermediate_{0}.tif".format(counter)
             # Determine the weight for the species and add accordingling
             if weight == "None":
                 __Log("\tvalue = " + str(1))
                 tally = tally + habmap
-            if weight != "None":
-                weight = weightsDF.loc[sp, "weight"]
+
+            if weight == "custom":
+                # For custom weights, use the DataFrame to get the weight
+                weight_value = weightsDF.loc[sp[:6], "weight"]
+                tally = tally + habmap*weight_value
+            
+            if weight == "percentile" or weight == "area":
+                weight_value = weightsDF.loc[sp, "weight"]
                 # These cases would produce float data type 
                 # so multiply by 1000 for integers
-                __Log("\tvalue = " + str((1/weight)))
-                tally = tally + (habmap/weight)
+                __Log("\tvalue = " + str((1/weight_value)))
+                tally = tally + (habmap/weight_value)
             
             if counter - 1 in range(0, 2000, interval):
                 if weight == "None":
                     tally.save(tally_file_name)
-                if weight != "None":
+                
+                if weight == "percentile" or weight == "area":
                     intermediate = arcpy.sa.Int((tally*10000) + 0.5)
+                    intermediate.save(tally_file_name)
+                
+                if weight == "custom":
+                    intermediate = arcpy.sa.Int(tally)
                     intermediate.save(tally_file_name)
                 arcpy.management.BuildRasterAttributeTable(in_raster=tally_file_name,
                                                            overwrite=False)
@@ -168,11 +200,18 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     try:
         richness_file_name = outDir + "/{0}_Richness.tif".format(groupName)
         __Log('Saving richness raster to {0}'.format(richness_file_name))
-        if weight != "None":
+        
+        if weight == "percentile" or weight == "area":
             finalrichness = arcpy.sa.Int((tally*10000) + 0.5)
-            finalrichness.save(richness_file_name)
+            finalrichness.save(richness_file_name)  
+        
         if weight == "None":
             tally.save(richness_file_name)
+        
+        if weight == "custom":
+            tally = arcpy.sa.Int(tally)
+            tally.save(richness_file_name)
+        
         __Log('Richness raster saved')
         __Log('Building RAT')
         arcpy.management.BuildRasterAttributeTable(in_raster=richness_file_name,
