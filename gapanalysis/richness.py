@@ -8,13 +8,14 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
       retained. That is, the code sums the rasters but saves the running total at interval
       size; the intermediate richness rasters are retained for spot-checking. Refer to the 
       output log file for a list of species included in each intermediate raster as well 
-      as the code that was run for the process.
+      as the code that was run for the process. Weights can be applied to the 
+      input maps with different methods.
 
     Returns the path to the output richness raster and the path to the species
       table.
 
     Arguments:
-    spp -- A list of GAP species codes to include in the calculation
+    spp -- A list of habitat map file names to include in the calculation
     groupName -- The name you wish to use to identify the output directories
         and files (e.g., 'raptors')
     outLoc -- The directory in which you wish to place output and intermediate files.
@@ -30,21 +31,29 @@ def MapRichness(spp, groupName, outLoc, modelDir, season, intervalSize,
     CONUSExtent -- A raster with a national/CONUS extent, and all cells have value of 0 except 
         for a 3x3 cell square in the top left corner that has values of 1.  The spatial reference
         should be NAD_1983_Albers and cell size 30x30 m.  Also used as a snap raster.
-    weight -- option to weight each species to allow less widespread species to 
-        count more.  Options are "None", "percentile", "area", and "custom".  None
-        is the default and will weight each species equally (1).  Percentile
-        will weight with 1/proportion of species (from the list you provided, 
-        which is important to note) with a pixel count below the species' 
-        pixel count. The area option will use 1/species pixel count. Custom
-        allows the user to pass a pandas DataFrame with species names and
-        weights. The dataframe should have two columns: "strUC" and "weight".
+    weight -- option to weight each species. Options are "None", "percentile", 
+        "area", and "custom". None is the default and will weight each species 
+        equally (1). Custom allows the user to pass a pandas DataFrame with 
+        species names and weights. The dataframe should have two columns: 
+        "strUC" (string) and "weight" (integer). Percentile will weight with 
+        1/proportion of species (from the list you provided, which is important 
+        to note) with a pixel count below the species' pixel count. The area 
+        option will use 1/species pixel count. 
 
     Example:
-    >>> MapRichness(['aagtox', 'bbaeax', 'mnarox'], 'MyRandomSpecies', 
-                        outLoc='C:/GIS_Data/Richness', modelDir='C:/Data/Model/Output',
-                        season="Summer", intervalSize=20, weight="None",
-                        log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
-    C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, C:\GIS_Data\Richness\MyRandomSpecies.csv
+    >>> MapRichness(spp=['mOLDEh_CONUS_01A_2016v1_int8_1bit.tif',
+                         'mOLDEt_CONUS_01A_2016v1_int8_1bit.tif',
+                         'aSDSAx_CONUS_01A_2016v1_int8_1bit.tif'], 
+                    groupName='MyRandomSpecies', 
+                    outLoc='C:/GIS_Data/Richness', 
+                    modelDir='C:/Data/Model/Output',
+                    season="Summer", 
+                    intervalSize=20, 
+                    weight="None",
+                    log='C:/GIS_DATA/Richness/log_MyRandomSpecies.txt')
+                    
+    C:\GIS_Data\Richness\MyRandomSpecies_04_Richness\MyRandomSpecies.tif, 
+    C:\GIS_Data\Richness\MyRandomSpecies.csv
     '''    
     
     import os, datetime, arcpy, pandas as pd
